@@ -1,0 +1,34 @@
+// ==========================================
+// ⚠️  AUTO-GERADO. NÃO EDITE ESTE ARQUIVO.
+// Fonte: prisma/schema/*.prisma
+// ==========================================
+
+// ----- 00-generator.prisma -----
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+// ----- 01-datasource.prisma -----
+datasource db {
+  provider = "postgresql"
+}
+
+// ----- 10-enums.prisma -----
+
+
+// ----- 20-mural.model.prisma -----
+model Mural {
+    id              String          @id @default(uuid()) @db.Uuid @map("id")
+    titulo          String
+    mensagem        String
+    caminhoImagem   String?
+
+    filiais         String[]
+
+    createdAt       DateTime        @default(now()) @map("createdAt") @db.Timestamp(6)
+    updatedAt       DateTime        @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
+
+  @@map("Mural")
+}

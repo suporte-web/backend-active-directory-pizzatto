@@ -5,12 +5,15 @@ import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 import { patchLdapjsUnescapedDn } from './ldap/ldapjs-unescaped.patch';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   patchLdapjsUnescapedDn();
-  // Ativa validação global dos DTOs
+
+  app.set('trust proxy', true);
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

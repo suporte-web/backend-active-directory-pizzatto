@@ -1,0 +1,13 @@
+model Mural {
+    id              String          @id @default(uuid()) @db.Uuid @map("id")
+    titulo          String
+    mensagem        String
+    caminhoImagem   String?
+
+    filiais         String[]
+
+    createdAt       DateTime        @default(now()) @map("createdAt") @db.Timestamp(6)
+    updatedAt       DateTime        @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
+
+  @@map("Mural")
+}

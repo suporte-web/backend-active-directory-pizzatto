@@ -1,19 +1,22 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { User } from 'src/user/user.model';
+// import { InjectModel } from '@nestjs/mongoose';
+// import { Model } from 'mongoose';
+// import { User } from 'src/user/user.model';
 import * as ldap from 'ldapjs';
 
 @Injectable()
 export class UserAdService {
   constructor(
-    @InjectModel('UserAd') private readonly userAdModel: Model<User>,
+    // @InjectModel('UserAd') private readonly userAdModel: Model<User>,
   ) {}
 
   // ====== ENV ======
   private readonly url = process.env.AD_URL!;
-  private readonly bindDN = process.env.AD_BIND_DN!;
-  private readonly bindPassword = process.env.AD_BIND_PASSWORD!;
+  private readonly bindIdentity = (process.env.AD_BIND_IDENTITY || '').trim();
+  private readonly bindPassword = (process.env.AD_BIND_PASSWORD || '')
+    .replace(/\r/g, '')
+    .replace(/\n/g, '')
+    .trim();
 
   // ====== CONSTANTS ======
   private readonly BASE_DN = 'DC=pizzatto,DC=local';
@@ -49,8 +52,14 @@ export class UserAdService {
 
   private async bind(client: ldap.Client): Promise<void> {
     return new Promise((resolve, reject) => {
-      client.bind(this.bindDN, this.bindPassword, (err) => {
-        if (err) return reject(err);
+      client.bind(this.bindIdentity, this.bindPassword, (err) => {
+        if (err) {
+          console.error(
+            '[LDAP][bind] err raw:',
+            JSON.stringify(err, Object.getOwnPropertyNames(err), 2),
+          );
+          return reject(err);
+        }
         resolve();
       });
     });
@@ -59,12 +68,10 @@ export class UserAdService {
   private safeUnbind(client: ldap.Client) {
     try {
       client.unbind();
-    } catch (e) {
-      // se a conexão já caiu (ECONNRESET), unbind pode falhar
-      try {
-        client.destroy();
-      } catch {}
-    }
+    } catch {}
+    try {
+      client.destroy();
+    } catch {}
   }
 
   // ====== HELPERS ======
@@ -168,80 +175,80 @@ export class UserAdService {
     await this.modify(client, dn, change);
   }
 
-  private async setResetPassword(
-    client: ldap.Client,
-    dn: string,
-    password: string,
-  ): Promise<void> {
-    const passwordBuffer = Buffer.from(`"${password}"`, 'utf16le');
+  // private async setResetPassword(
+  //   client: ldap.Client,
+  //   dn: string,
+  //   password: string,
+  // ): Promise<void> {
+  //   const passwordBuffer = Buffer.from(`"${password}"`, 'utf16le');
 
-    const AttributeCtor = (ldap as any).Attribute;
-    const ChangeCtor = (ldap as any).Change;
+  //   const AttributeCtor = (ldap as any).Attribute;
+  //   const ChangeCtor = (ldap as any).Change;
 
-    // ✅ crie o Attribute e adicione valor via método
-    const attr = new AttributeCtor({ type: 'unicodePwd' });
-    attr.addValue(passwordBuffer);
+  //   // ✅ crie o Attribute e adicione valor via método
+  //   const attr = new AttributeCtor({ type: 'unicodePwd' });
+  //   attr.addValue(passwordBuffer);
 
-    const change = new ChangeCtor({
-      operation: 'replace',
-      modification: attr,
-    });
+  //   const change = new ChangeCtor({
+  //     operation: 'replace',
+  //     modification: attr,
+  //   });
 
-    // ✅ passe como array (muito mais compatível)
-    await new Promise<void>((resolve, reject) => {
-      client.modify(dn, [change], (err) => (err ? reject(err) : resolve()));
-    });
-  }
+  //   // ✅ passe como array (muito mais compatível)
+  //   await new Promise<void>((resolve, reject) => {
+  //     client.modify(dn, [change], (err) => (err ? reject(err) : resolve()));
+  //   });
+  // }
 
-  private async getRootDseInfo(client: ldap.Client): Promise<any> {
-    const opts: ldap.SearchOptions = {
-      scope: 'base',
-      filter: '(objectClass=*)',
-      attributes: [
-        'defaultNamingContext',
-        'dnsHostName',
-        'ldapServiceName',
-        'serverName',
-        'isGlobalCatalogReady',
-      ],
-    };
+  // private async getRootDseInfo(client: ldap.Client): Promise<any> {
+  //   const opts: ldap.SearchOptions = {
+  //     scope: 'base',
+  //     filter: '(objectClass=*)',
+  //     attributes: [
+  //       'defaultNamingContext',
+  //       'dnsHostName',
+  //       'ldapServiceName',
+  //       'serverName',
+  //       'isGlobalCatalogReady',
+  //     ],
+  //   };
 
-    return new Promise((resolve, reject) => {
-      client.search('', opts, (err, res) => {
-        if (err) return reject(err);
+  //   return new Promise((resolve, reject) => {
+  //     client.search('', opts, (err, res) => {
+  //       if (err) return reject(err);
 
-        let obj: any = null;
+  //       let obj: any = null;
 
-        res.on('searchEntry', (entry: any) => {
-          // ✅ alguns builds trazem entry.pojo.object
-          obj = entry.object ?? entry.pojo?.object ?? entry.pojo ?? entry;
-        });
+  //       res.on('searchEntry', (entry: any) => {
+  //         // ✅ alguns builds trazem entry.pojo.object
+  //         obj = entry.object ?? entry.pojo?.object ?? entry.pojo ?? entry;
+  //       });
 
-        res.on('error', reject);
-        res.on('end', () => resolve(obj));
-      });
-    });
-  }
+  //       res.on('error', reject);
+  //       res.on('end', () => resolve(obj));
+  //     });
+  //   });
+  // }
 
-  private async forceResetPasswordChange(
-    client: ldap.Client,
-    dn: string,
-  ): Promise<void> {
-    const AttributeCtor = (ldap as any).Attribute;
-    const ChangeCtor = (ldap as any).Change;
+  // private async forceResetPasswordChange(
+  //   client: ldap.Client,
+  //   dn: string,
+  // ): Promise<void> {
+  //   const AttributeCtor = (ldap as any).Attribute;
+  //   const ChangeCtor = (ldap as any).Change;
 
-    const attr = new AttributeCtor({ type: 'pwdLastSet' });
-    attr.addValue('0');
+  //   const attr = new AttributeCtor({ type: 'pwdLastSet' });
+  //   attr.addValue('0');
 
-    const change = new ChangeCtor({
-      operation: 'replace',
-      modification: attr,
-    });
+  //   const change = new ChangeCtor({
+  //     operation: 'replace',
+  //     modification: attr,
+  //   });
 
-    await new Promise<void>((resolve, reject) => {
-      client.modify(dn, [change], (err) => (err ? reject(err) : resolve()));
-    });
-  }
+  //   await new Promise<void>((resolve, reject) => {
+  //     client.modify(dn, [change], (err) => (err ? reject(err) : resolve()));
+  //   });
+  // }
 
   private async enableAccount(client: ldap.Client, dn: string): Promise<void> {
     const AttributeCtor = (ldap as any).Attribute;
@@ -295,36 +302,36 @@ export class UserAdService {
     });
   }
 
-  private async getUserMemberOfBySam(
-    client: ldap.Client,
-    sam: string,
-  ): Promise<string[]> {
-    const samEscaped = this.escapeFilter(sam);
+  // private async getUserMemberOfBySam(
+  //   client: ldap.Client,
+  //   sam: string,
+  // ): Promise<string[]> {
+  //   const samEscaped = this.escapeFilter(sam);
 
-    const options: ldap.SearchOptions = {
-      scope: 'sub',
-      filter: `(&(objectClass=user)(sAMAccountName=${samEscaped}))`,
-      attributes: ['memberOf'],
-      sizeLimit: 1,
-    };
+  //   const options: ldap.SearchOptions = {
+  //     scope: 'sub',
+  //     filter: `(&(objectClass=user)(sAMAccountName=${samEscaped}))`,
+  //     attributes: ['memberOf'],
+  //     sizeLimit: 1,
+  //   };
 
-    return new Promise((resolve, reject) => {
-      const memberOf: string[] = [];
+  //   return new Promise((resolve, reject) => {
+  //     const memberOf: string[] = [];
 
-      client.search(this.BASE_DN, options, (err, res) => {
-        if (err) return reject(err);
+  //     client.search(this.BASE_DN, options, (err, res) => {
+  //       if (err) return reject(err);
 
-        res.on('searchEntry', (entry: any) => {
-          const attrs = entry.pojo.attributes || [];
-          const mo = attrs.find((a: any) => a.type === 'memberOf');
-          if (mo?.values?.length) memberOf.push(...mo.values);
-        });
+  //       res.on('searchEntry', (entry: any) => {
+  //         const attrs = entry.pojo.attributes || [];
+  //         const mo = attrs.find((a: any) => a.type === 'memberOf');
+  //         if (mo?.values?.length) memberOf.push(...mo.values);
+  //       });
 
-        res.on('error', reject);
-        res.on('end', () => resolve(memberOf));
-      });
-    });
-  }
+  //       res.on('error', reject);
+  //       res.on('end', () => resolve(memberOf));
+  //     });
+  //   });
+  // }
 
   private isAlreadyInGroupError(err: any): boolean {
     const name = err?.name || '';
@@ -529,7 +536,11 @@ export class UserAdService {
             });
           });
 
-          res.on('error', reject);
+          client.on('error', (err: any) => {
+            if (err?.code === 'ECONNRESET') return; // ruído comum em LDAPS
+            console.error('[LDAP] client error (evento):', err);
+          });
+
           res.on('end', () => resolve(users));
         });
       });
@@ -783,30 +794,30 @@ export class UserAdService {
   //   });
   // }
 
-  private async assertDnExists(client: ldap.Client, dn: string): Promise<void> {
-    const safeDn = this.normalizeDn(dn);
+  // private async assertDnExists(client: ldap.Client, dn: string): Promise<void> {
+  //   const safeDn = this.normalizeDn(dn);
 
-    const opts: ldap.SearchOptions = {
-      scope: 'base',
-      filter: '(objectClass=*)',
-      attributes: ['distinguishedName'],
-      sizeLimit: 1,
-    };
+  //   const opts: ldap.SearchOptions = {
+  //     scope: 'base',
+  //     filter: '(objectClass=*)',
+  //     attributes: ['distinguishedName'],
+  //     sizeLimit: 1,
+  //   };
 
-    await new Promise<void>((resolve, reject) => {
-      let ok = false;
+  //   await new Promise<void>((resolve, reject) => {
+  //     let ok = false;
 
-      client.search(safeDn, opts, (err, res) => {
-        if (err) return reject(err);
+  //     client.search(safeDn, opts, (err, res) => {
+  //       if (err) return reject(err);
 
-        res.on('searchEntry', () => (ok = true));
-        res.on('error', reject);
-        res.on('end', () =>
-          ok ? resolve() : reject(new Error(`DN não existe: ${safeDn}`)),
-        );
-      });
-    });
-  }
+  //       res.on('searchEntry', () => (ok = true));
+  //       res.on('error', reject);
+  //       res.on('end', () =>
+  //         ok ? resolve() : reject(new Error(`DN não existe: ${safeDn}`)),
+  //       );
+  //     });
+  //   });
+  // }
 
   // private async findUserDnAndGuidBySam(
   //   client: ldap.Client,
