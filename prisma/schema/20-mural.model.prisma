@@ -3,6 +3,10 @@ model Mural {
     titulo          String
     mensagem        String
     caminhoImagem   String?
+    ativo           Boolean         @default(true)
+    validoAte       String
+    criadoPor       String 
+    importante      Boolean         @default(false)         
 
     filiais         String[]
 

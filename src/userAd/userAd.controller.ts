@@ -1,5 +1,5 @@
 // src/ad/ad-user.controller.ts
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, UseGuards } from '@nestjs/common';
 import { UserAdService } from './userAd.service';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
@@ -27,21 +27,30 @@ export class UserAdController {
   async getUsersPaginated(@Body() body: any) {
     return await this.adUserService.getUsersPaginated(body);
   }
-  
+
   @Post('update')
   @ApiOperation({ summary: 'Atualiza as informações do Usuario no AD' })
   async updateUser(@Body() body: any) {
     return await this.adUserService.updateUserAd(body);
   }
-  
+
   @Get('groups')
   @ApiOperation({ summary: 'Encontra todos os Grupos no AD' })
   async getGroups() {
     return await this.adUserService.getAllGroups();
   }
-  
+
+  @Get('get-all-users-for-manager')
+  @ApiOperation({ summary: 'Encontra todos os Usuarios no AD para Gestor' })
+  async getAllUsersForManager() {
+    return await this.adUserService.getAllUsersForManager();
+  }
+
   @Post('reset-password')
-  @ApiOperation({ summary: 'Reseta a senha de Usuario no AD e força troca quando entrar novamente' })
+  @ApiOperation({
+    summary:
+      'Reseta a senha de Usuario no AD e força troca quando entrar novamente',
+  })
   async resetPasswordAndForceChange(@Body() body: any) {
     return await this.adUserService.resetPasswordAndForceChange(body);
   }

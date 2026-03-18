@@ -1,0 +1,11 @@
+model AuditLog {
+  id                String      @id @default(uuid()) @db.Uuid @map("id")
+  acao              String
+  entidade          String
+  ipAddress         String?
+  filialEntidade    String?
+
+  createdAt         DateTime    @default(now())
+
+  @@map("audit_logs")
+}

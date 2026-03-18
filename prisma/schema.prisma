@@ -24,6 +24,10 @@ model Mural {
     titulo          String
     mensagem        String
     caminhoImagem   String?
+    ativo           Boolean         @default(true)
+    validoAte       String
+    criadoPor       String 
+    importante      Boolean         @default(false)         
 
     filiais         String[]
 
@@ -31,4 +35,17 @@ model Mural {
     updatedAt       DateTime        @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
 
   @@map("Mural")
+}
+
+// ----- 21-auditLog.model.prisma -----
+model AuditLog {
+  id                String      @id @default(uuid()) @db.Uuid @map("id")
+  acao              String
+  entidade          String
+  ipAddress         String?
+  filialEntidade    String?
+
+  createdAt         DateTime    @default(now())
+
+  @@map("audit_logs")
 }

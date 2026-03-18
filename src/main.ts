@@ -1,11 +1,13 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
+
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 import { patchLdapjsUnescapedDn } from './ldap/ldapjs-unescaped.patch';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -22,18 +24,21 @@ async function bootstrap() {
     }),
   );
 
-  // Libera CORS para qualquer origem
   app.enableCors({
     origin: true,
     credentials: true,
   });
 
-  // Configuração do Swagger
+  app.useStaticAssets(join(process.cwd(), 'downloads'), {
+    prefix: '/downloads/',
+  });
+
   const config = new DocumentBuilder()
     .setTitle('API Active Directory Pizzatto')
     .setDescription('Documentação da API Acive Directory Pizzatto')
     .setVersion('1.0')
     .build();
+
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 

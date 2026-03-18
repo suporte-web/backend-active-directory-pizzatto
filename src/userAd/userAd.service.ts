@@ -6,9 +6,7 @@ import * as ldap from 'ldapjs';
 
 @Injectable()
 export class UserAdService {
-  constructor(
-    // @InjectModel('UserAd') private readonly userAdModel: Model<User>,
-  ) {}
+  constructor() {} // @InjectModel('UserAd') private readonly userAdModel: Model<User>,
 
   // ====== ENV ======
   private readonly url = process.env.AD_URL!;
@@ -470,10 +468,14 @@ export class UserAdService {
           'sAMAccountName',
           'userPrincipalName',
           'mail',
+          'company',
+          'department',
+          'telephoneNumber',
           'distinguishedName',
           'userAccountControl',
           'objectGUID',
           'memberOf',
+          'manager',
         ],
         paged: {
           pageSize: 1000,
@@ -525,6 +527,9 @@ export class UserAdService {
               userPrincipalName:
                 (attrMap['userPrincipalName'] as string) ?? null,
               mail: (attrMap['mail'] as string) ?? null,
+              company: (attrMap['company'] as string) ?? null,
+              department: (attrMap['department'] as string) ?? null,
+              telephoneNumber: (attrMap['telephoneNumber'] as string) ?? null,
               distinguishedName:
                 (attrMap['distinguishedName'] as string) ??
                 (entry.pojo.objectName as string) ??
@@ -533,6 +538,7 @@ export class UserAdService {
               isDisabled,
               objectGUID,
               memberOf,
+              manager: (attrMap['manager'] as string) ?? null,
             });
           });
 
@@ -659,23 +665,40 @@ export class UserAdService {
 
       const userDn = await this.findUserDnBySam(client, sam);
 
-      // pega memberOf + primaryGroupID
+      const managerSam = body.managerSamAccountName ?? null;
+      let managerDn: string | null = null;
+
+      if (managerSam) {
+        managerDn = await this.findUserDnBySam(client, managerSam);
+      }
+
+      if (managerDn && this.dnKey(managerDn) === this.dnKey(userDn)) {
+        throw new Error('O usuário não pode ser gerente dele mesmo.');
+      }
+
+      await this.updateManager(client, userDn, managerDn);
+
+      await this.updateUserAttributes(client, userDn, {
+        telephoneNumber: body.telephoneNumber,
+        mail: body.mail,
+        company: body.company,
+        department: body.department,
+      });
+
+      // grupos
       const { memberOf, primaryGroupId } =
         await this.getUserMembershipStateBySam(client, sam);
 
-      // resolve DN do primary group (ex: Usuários do domínio)
       const primaryGroupDn = primaryGroupId
         ? await this.findPrimaryGroupDnByToken(client, primaryGroupId).catch(
             () => null,
           )
         : null;
 
-      // currentAll: memberOf + primary group (só para calcular toAdd)
       const currentAll = primaryGroupDn
         ? [...memberOf, primaryGroupDn]
         : memberOf;
 
-      // dedup e comparação robusta
       const currentAllKeys = new Set(currentAll.map((g) => this.dnKey(g)));
 
       const targetGroups = Array.from(
@@ -683,15 +706,12 @@ export class UserAdService {
       );
       const targetKeys = new Set(targetGroups.map((g) => this.dnKey(g)));
 
-      // adicionar: o que está no target mas não está no currentAll
       let toAdd = targetGroups.filter(
         (g) => !currentAllKeys.has(this.dnKey(g)),
       );
 
-      // remover: só remove do memberOf (não mexe com primary group)
       let toRemove = memberOf.filter((g) => !targetKeys.has(this.dnKey(g)));
 
-      // proteção extra: nunca tenta mexer explicitamente no primary group
       if (primaryGroupDn) {
         const pgKey = this.dnKey(primaryGroupDn);
         toAdd = toAdd.filter((g) => this.dnKey(g) !== pgKey);
@@ -746,159 +766,9 @@ export class UserAdService {
     }
   }
 
-  // private async getDefaultNamingContext(client: ldap.Client): Promise<string> {
-  //   const opts: ldap.SearchOptions = {
-  //     scope: 'base',
-  //     filter: '(objectClass=*)',
-  //     attributes: ['defaultNamingContext'],
-  //   };
-
-  //   return new Promise((resolve, reject) => {
-  //     client.search('', opts, (err, res) => {
-  //       if (err) return reject(err);
-
-  //       let baseDn: string | null = null;
-
-  //       res.on('searchEntry', (entry: any) => {
-  //         /**
-  //          * Forma mais confiável no ldapjs:
-  //          * entry.object já vem "flattened"
-  //          */
-  //         if (entry.object?.defaultNamingContext) {
-  //           baseDn = entry.object.defaultNamingContext;
-  //         }
-
-  //         /**
-  //          * Fallback defensivo (caso alguma versão diferente)
-  //          */
-  //         if (!baseDn && Array.isArray(entry.attributes)) {
-  //           const attr = entry.attributes.find(
-  //             (a: any) => a.type === 'defaultNamingContext',
-  //           );
-
-  //           if (attr?.values?.length) baseDn = attr.values[0];
-  //         }
-  //       });
-
-  //       res.on('error', reject);
-
-  //       res.on('end', () => {
-  //         if (!baseDn) {
-  //           return reject(
-  //             new Error('defaultNamingContext não encontrado no RootDSE'),
-  //           );
-  //         }
-  //         resolve(baseDn);
-  //       });
-  //     });
-  //   });
-  // }
-
-  // private async assertDnExists(client: ldap.Client, dn: string): Promise<void> {
-  //   const safeDn = this.normalizeDn(dn);
-
-  //   const opts: ldap.SearchOptions = {
-  //     scope: 'base',
-  //     filter: '(objectClass=*)',
-  //     attributes: ['distinguishedName'],
-  //     sizeLimit: 1,
-  //   };
-
-  //   await new Promise<void>((resolve, reject) => {
-  //     let ok = false;
-
-  //     client.search(safeDn, opts, (err, res) => {
-  //       if (err) return reject(err);
-
-  //       res.on('searchEntry', () => (ok = true));
-  //       res.on('error', reject);
-  //       res.on('end', () =>
-  //         ok ? resolve() : reject(new Error(`DN não existe: ${safeDn}`)),
-  //       );
-  //     });
-  //   });
-  // }
-
-  // private async findUserDnAndGuidBySam(
-  //   client: ldap.Client,
-  //   sam: string,
-  // ): Promise<{ dn: string; guid: Buffer }> {
-  //   const samEscaped = this.escapeFilter(sam);
-
-  //   const options: ldap.SearchOptions = {
-  //     scope: 'sub',
-  //     filter: `(&(objectClass=user)(sAMAccountName=${samEscaped}))`,
-  //     attributes: ['distinguishedName', 'objectGUID'],
-  //     sizeLimit: 1,
-  //   };
-
-  //   return new Promise((resolve, reject) => {
-  //     let dn: string | null = null;
-  //     let guid: Buffer | null = null;
-
-  //     client.search(this.BASE_DN, options, (err, res) => {
-  //       if (err) return reject(err);
-
-  //       res.on('searchEntry', (entry: any) => {
-  //         dn = entry.object?.distinguishedName ?? dn;
-
-  //         // dependendo da versão, objectGUID vem como Buffer ou string binária
-  //         const raw = entry.object?.objectGUID;
-  //         if (Buffer.isBuffer(raw)) guid = raw;
-  //         else if (typeof raw === 'string') guid = Buffer.from(raw, 'binary');
-
-  //         // fallback: attributes
-  //         if (!guid && Array.isArray(entry.attributes)) {
-  //           const a = entry.attributes.find(
-  //             (x: any) => x.type === 'objectGUID',
-  //           );
-  //           const v = a?.values?.[0];
-  //           if (v) guid = Buffer.isBuffer(v) ? v : Buffer.from(v, 'binary');
-  //         }
-  //       });
-
-  //       res.on('error', reject);
-  //       res.on('end', () => {
-  //         if (!dn || !guid)
-  //           return reject(new Error('Não consegui obter DN/GUID do usuário'));
-  //         resolve({ dn, guid });
-  //       });
-  //     });
-  //   });
-  // }
-
-  // private async testWriteDescription(
-  //   client: ldap.Client,
-  //   dn: string,
-  // ): Promise<void> {
-  //   const AttributeCtor = (ldap as any).Attribute;
-  //   const ChangeCtor = (ldap as any).Change;
-
-  //   const attr = new AttributeCtor({ type: 'description' });
-  //   attr.addValue(`pwd-reset-test ${new Date().toISOString()}`);
-
-  //   const change = new ChangeCtor({
-  //     operation: 'replace',
-  //     modification: attr,
-  //   });
-
-  //   await new Promise<void>((resolve, reject) => {
-  //     client.modify(dn, [change], (err) => (err ? reject(err) : resolve()));
-  //   });
-  // }
-
   private normalizeDn(dn: string): string {
     if (!dn || typeof dn !== 'string') return dn as any;
-
-    // remove lixo invisível (linha, espaço no fim) que também causa "No Such Object"
-    const trimmed = dn.trim();
-
-    // Converte qualquer char não-ASCII para \HH\HH... (bytes UTF-8)
-    return trimmed.replace(/[^\x00-\x7F]/g, (ch) => {
-      const hex = Buffer.from(ch, 'utf8').toString('hex').toUpperCase(); // ex: 'C3A1'
-      const pairs = hex.match(/../g) || [];
-      return pairs.map((p) => `\\${p}`).join(''); // vira '\C3\A1'
-    });
+    return dn.trim();
   }
 
   private async setUnicodePwd(
@@ -1020,6 +890,258 @@ export class UserAdService {
 
         res.on('error', reject);
         res.on('end', () => resolve(foundDn));
+      });
+    });
+  }
+
+  async getAllUsersForManager(): Promise<any[]> {
+    const client = this.createClient();
+
+    try {
+      await this.bind(client);
+
+      const options: ldap.SearchOptions = {
+        scope: 'sub',
+        filter:
+          '(&(objectCategory=person)(objectClass=user)(!(objectClass=computer)))',
+        attributes: [
+          'displayName',
+          'cn',
+          'sAMAccountName',
+          'mail',
+          'distinguishedName',
+        ],
+        paged: {
+          pageSize: 1000,
+          pagePause: false,
+        },
+      };
+
+      return await new Promise((resolve, reject) => {
+        const users: any[] = [];
+
+        client.search(this.BASE_DN, options, (err, res) => {
+          if (err) return reject(err);
+
+          res.on('searchEntry', (entry: any) => {
+            const attrs = entry.pojo.attributes || [];
+            const attrMap: Record<string, string | string[]> = {};
+
+            for (const attr of attrs) {
+              if (!attr.values || attr.values.length === 0) continue;
+              attrMap[attr.type] =
+                attr.values.length === 1 ? attr.values[0] : attr.values;
+            }
+
+            const distinguishedName =
+              (attrMap['distinguishedName'] as string) ??
+              (entry.pojo.objectName as string) ??
+              null;
+
+            const displayName =
+              (attrMap['displayName'] as string) ??
+              (attrMap['cn'] as string) ??
+              null;
+
+            if (!distinguishedName || !displayName) return;
+
+            users.push({
+              label: displayName,
+              value: distinguishedName,
+              sAMAccountName: (attrMap['sAMAccountName'] as string) ?? null,
+              mail: (attrMap['mail'] as string) ?? null,
+            });
+          });
+
+          res.on('error', reject);
+          res.on('end', () => resolve(users));
+        });
+      });
+    } catch (error) {
+      console.error('[getAllUsersForManager] erro:', error);
+      throw new InternalServerErrorException(
+        'Erro ao buscar usuários do Active Directory',
+      );
+    } finally {
+      this.safeUnbind(client);
+    }
+  }
+
+  private async updateManager(
+    client: ldap.Client,
+    userDn: string,
+    managerDn: string | null,
+  ): Promise<void> {
+    const AttributeCtor = (ldap as any).Attribute;
+    const ChangeCtor = (ldap as any).Change;
+
+    const safeUserDn = this.normalizeDn(userDn);
+
+    if (managerDn) {
+      const attr = new AttributeCtor({ type: 'manager' });
+      attr.addValue(this.normalizeDn(managerDn));
+
+      const change = new ChangeCtor({
+        operation: 'replace',
+        modification: attr,
+      });
+
+      await new Promise<void>((resolve, reject) => {
+        client.modify(safeUserDn, [change], (err) => {
+          if (err) {
+            console.error(
+              '[LDAP][updateManager]',
+              JSON.stringify(err, Object.getOwnPropertyNames(err), 2),
+            );
+            return reject(err);
+          }
+          resolve();
+        });
+      });
+
+      return;
+    }
+
+    const currentAttrs = await this.getUserCurrentAttributes(
+      client,
+      safeUserDn,
+      ['manager'],
+    );
+
+    const hasManager =
+      Array.isArray(currentAttrs.manager) && currentAttrs.manager.length > 0;
+
+    if (!hasManager) return;
+
+    const attr = new AttributeCtor({ type: 'manager' });
+
+    const change = new ChangeCtor({
+      operation: 'delete',
+      modification: attr,
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      client.modify(safeUserDn, [change], (err) => {
+        if (err) {
+          console.error(
+            '[LDAP][updateManager]',
+            JSON.stringify(err, Object.getOwnPropertyNames(err), 2),
+          );
+          return reject(err);
+        }
+        resolve();
+      });
+    });
+  }
+
+  private async updateUserAttributes(
+    client: ldap.Client,
+    userDn: string,
+    attrs: {
+      telephoneNumber?: string | null;
+      mail?: string | null;
+      company?: string | null;
+      department?: string | null;
+    },
+  ): Promise<void> {
+    const AttributeCtor = (ldap as any).Attribute;
+    const ChangeCtor = (ldap as any).Change;
+
+    const requestedAttrs = ['telephoneNumber', 'mail', 'company', 'department'];
+
+    const currentAttrs = await this.getUserCurrentAttributes(
+      client,
+      userDn,
+      requestedAttrs,
+    );
+
+    const changes: any[] = [];
+
+    const pushReplaceOrDelete = (type: string, value?: string | null) => {
+      if (value === undefined) return;
+
+      const normalized = value === null ? null : String(value).trim();
+      const hasCurrentValue =
+        Array.isArray(currentAttrs[type]) && currentAttrs[type].length > 0;
+
+      let change: any;
+
+      if (normalized) {
+        const attr = new AttributeCtor({ type });
+        attr.addValue(normalized);
+
+        change = new ChangeCtor({
+          operation: 'replace',
+          modification: attr,
+        });
+
+        changes.push(change);
+        return;
+      }
+
+      // só tenta delete se o atributo realmente existir
+      if (hasCurrentValue) {
+        const attr = new AttributeCtor({ type });
+
+        change = new ChangeCtor({
+          operation: 'delete',
+          modification: attr,
+        });
+
+        changes.push(change);
+      }
+    };
+
+    pushReplaceOrDelete('telephoneNumber', attrs.telephoneNumber);
+    pushReplaceOrDelete('mail', attrs.mail);
+    pushReplaceOrDelete('company', attrs.company);
+    pushReplaceOrDelete('department', attrs.department);
+
+    if (changes.length === 0) return;
+
+    for (const change of changes) {
+      await new Promise<void>((resolve, reject) => {
+        client.modify(userDn, [change], (err) => {
+          if (err) {
+            console.error(
+              '[LDAP][updateUserAttributes]',
+              JSON.stringify(err, Object.getOwnPropertyNames(err), 2),
+            );
+            return reject(err);
+          }
+          resolve();
+        });
+      });
+    }
+  }
+
+  private async getUserCurrentAttributes(
+    client: ldap.Client,
+    userDn: string,
+    attributes: string[],
+  ): Promise<Record<string, string[]>> {
+    const options: ldap.SearchOptions = {
+      scope: 'base',
+      filter: '(objectClass=*)',
+      attributes,
+    };
+
+    return new Promise((resolve, reject) => {
+      const result: Record<string, string[]> = {};
+
+      client.search(userDn, options, (err, res) => {
+        if (err) return reject(err);
+
+        res.on('searchEntry', (entry: any) => {
+          const attrs = entry.pojo?.attributes || [];
+
+          for (const attr of attrs) {
+            result[attr.type] = attr.values || [];
+          }
+        });
+
+        res.on('error', reject);
+        res.on('end', () => resolve(result));
       });
     });
   }

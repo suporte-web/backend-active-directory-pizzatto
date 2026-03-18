@@ -8,6 +8,7 @@ type LdapUser = {
   displayName?: string;
   mail?: string;
   userPrincipalName?: string;
+  company?: string;
 };
 
 @Injectable()
@@ -98,6 +99,7 @@ export class AuthService {
         'displayName',
         'mail',
         'userPrincipalName',
+        'company',
       ],
       sizeLimit: 1,
     };
@@ -138,6 +140,7 @@ export class AuthService {
             mail: getAttr('mail') ?? obj.mail,
             userPrincipalName:
               getAttr('userPrincipalName') ?? obj.userPrincipalName,
+            company: getAttr('company') ?? obj.company,
           };
         });
 
@@ -202,6 +205,7 @@ export class AuthService {
       sam: adUser.sAMAccountName,
       name: adUser.displayName,
       mail: adUser.mail,
+      company: adUser.company,
       roles,
     };
 
