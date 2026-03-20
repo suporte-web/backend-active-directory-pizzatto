@@ -1,5 +1,5 @@
 model AuditLog {
-  id                String      @id @default(uuid()) @db.Uuid @map("id")
+  id                String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
   acao              String
   entidade          String
   ipAddress         String?

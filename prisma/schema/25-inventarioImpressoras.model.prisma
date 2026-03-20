@@ -1,0 +1,18 @@
+model InventarioImpressoras {
+    id                      String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
+    filial                  String
+    marca                   String
+    modelo                  String
+    numeroSerie             String?
+    ip                      String
+    macLan                  String
+    macWlan                 String?
+    localizacao             String?
+    senhaAdministrador      String?
+    etiqueta                String?
+
+    createdAt               DateTime        @default(now()) @map("createdAt") @db.Timestamp(6)
+    updatedAt               DateTime        @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
+
+  @@map("InventarioImpressoras")
+}

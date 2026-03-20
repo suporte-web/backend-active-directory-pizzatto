@@ -1,0 +1,14 @@
+model Pops {
+    id                      String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
+    filename                String
+    originalName            String
+    mimetype                String
+    size                    String
+    filePath                String
+    folder                  String
+   
+    createdAt               DateTime        @default(now()) @map("createdAt") @db.Timestamp(6)
+    updatedAt               DateTime        @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
+
+  @@map("Pops")
+}

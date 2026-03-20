@@ -1,0 +1,14 @@
+model ToDo {
+    id                  String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
+    nome                String
+    descricao           String
+    prazoLimite         String?         
+    responsavel         String
+    finalizado          Boolean         @default(false) 
+    dataFinalizado      String?
+    
+    createdAt       DateTime            @default(now()) @map("createdAt") @db.Timestamp(6)
+    updatedAt       DateTime            @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
+
+  @@map("ToDo")
+}

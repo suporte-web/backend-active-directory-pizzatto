@@ -1,17 +1,16 @@
-model Mural {
+model Assinatura {
     id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
-    titulo          String
-    mensagem        String
-    caminhoImagem   String?
-    ativo           Boolean         @default(true)
-    validoAte       String
+    nome            String
+    cargo           String
+    telefone        String?         
+    email           String
     criadoPor       String 
-    importante      Boolean         @default(false)         
-
-    filiais         String[]
-
+    caminhoImagem   String?
+    status          String?         @default("AGUARDANDO APROVAÇÃO")
+    motivo          String?         
+    
     createdAt       DateTime        @default(now()) @map("createdAt") @db.Timestamp(6)
     updatedAt       DateTime        @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
 
-  @@map("Mural")
+  @@map("Assinatura")
 }

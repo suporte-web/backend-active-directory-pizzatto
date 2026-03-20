@@ -1,0 +1,9 @@
+model ContasOffice {
+    id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
+    nome            String
+    email           String
+    senha           String
+    ativo           Boolean         @default(false)
+
+    @@map("ContasOffice")
+}

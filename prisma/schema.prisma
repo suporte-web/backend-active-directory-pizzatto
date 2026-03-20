@@ -20,7 +20,7 @@ datasource db {
 
 // ----- 20-mural.model.prisma -----
 model Mural {
-    id              String          @id @default(uuid()) @db.Uuid @map("id")
+    id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
     titulo          String
     mensagem        String
     caminhoImagem   String?
@@ -39,7 +39,7 @@ model Mural {
 
 // ----- 21-auditLog.model.prisma -----
 model AuditLog {
-  id                String      @id @default(uuid()) @db.Uuid @map("id")
+  id                String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
   acao              String
   entidade          String
   ipAddress         String?
@@ -48,4 +48,85 @@ model AuditLog {
   createdAt         DateTime    @default(now())
 
   @@map("audit_logs")
+}
+
+// ----- 22-assinatura.model.prisma -----
+model Assinatura {
+    id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
+    nome            String
+    cargo           String
+    telefone        String?         
+    email           String
+    criadoPor       String 
+    caminhoImagem   String?
+    status          String?         @default("AGUARDANDO APROVAÇÃO")
+    motivo          String?         
+    
+    createdAt       DateTime        @default(now()) @map("createdAt") @db.Timestamp(6)
+    updatedAt       DateTime        @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
+
+  @@map("Assinatura")
+}
+
+// ----- 23-toDo.model.prisma -----
+model ToDo {
+    id                  String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
+    nome                String
+    descricao           String
+    prazoLimite         String?         
+    responsavel         String
+    finalizado          Boolean         @default(false) 
+    dataFinalizado      String?
+    
+    createdAt       DateTime            @default(now()) @map("createdAt") @db.Timestamp(6)
+    updatedAt       DateTime            @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
+
+  @@map("ToDo")
+}
+
+// ----- 24-contasOffice.model.prisma -----
+model ContasOffice {
+    id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
+    nome            String
+    email           String
+    senha           String
+    ativo           Boolean         @default(false)
+
+    @@map("ContasOffice")
+}
+
+// ----- 25-inventarioImpressoras.model.prisma -----
+model InventarioImpressoras {
+    id                      String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
+    filial                  String
+    marca                   String
+    modelo                  String
+    numeroSerie             String?
+    ip                      String
+    macLan                  String
+    macWlan                 String?
+    localizacao             String?
+    senhaAdministrador      String?
+    etiqueta                String?
+
+    createdAt               DateTime        @default(now()) @map("createdAt") @db.Timestamp(6)
+    updatedAt               DateTime        @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
+
+  @@map("InventarioImpressoras")
+}
+
+// ----- 26-pops.model.prisma -----
+model Pops {
+    id                      String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
+    filename                String
+    originalName            String
+    mimetype                String
+    size                    String
+    filePath                String
+    folder                  String
+   
+    createdAt               DateTime        @default(now()) @map("createdAt") @db.Timestamp(6)
+    updatedAt               DateTime        @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
+
+  @@map("Pops")
 }
