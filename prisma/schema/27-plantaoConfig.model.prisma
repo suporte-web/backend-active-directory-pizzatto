@@ -1,0 +1,14 @@
+model PlantaoConfig {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
+  janelaSisInicio  String           @map("janela_sis_inicio")
+  janelaSisFim     String           @map("janela_sis_fim")
+  janelaInfInicio  String           @map("janela_inf_inicio")
+  janelaInfFim     String           @map("janela_inf_fim")
+  escalaSistemas   Json             @map("escala_sistemas")
+  escalaInfra      Json             @map("escala_infra")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+  contatos         PlantaoContato[]
+
+  @@map("plantao_config")
+}
