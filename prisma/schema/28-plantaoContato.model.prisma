@@ -4,15 +4,16 @@ enum Area {
 }
 
 model PlantaoContato {
-  id        String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
-  configId  String        @db.Uuid @map("config_id")
-  nome      String
-  telefone  String
-  area      Area
-  createdAt DateTime      @default(now()) @map("created_at")
-  updatedAt DateTime      @updatedAt @map("updated_at")
+  id                    String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
+  nome                  String
+  telefone              String
+  area                  Area
 
-  config    PlantaoConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  createdAt             DateTime        @default(now()) @map("createdAt") @db.Timestamp(6)
+  updatedAt             DateTime        @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
 
-  @@map("plantao_contato")
+  configId              String          @db.Uuid
+  config                PlantaoConfig   @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  @@map("PlantaoContato")
 }

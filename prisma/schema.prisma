@@ -133,18 +133,20 @@ model Pops {
 
 // ----- 27-plantaoConfig.model.prisma -----
 model PlantaoConfig {
-  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
-  janelaSisInicio  String           @map("janela_sis_inicio")
-  janelaSisFim     String           @map("janela_sis_fim")
-  janelaInfInicio  String           @map("janela_inf_inicio")
-  janelaInfFim     String           @map("janela_inf_fim")
-  escalaSistemas   Json             @map("escala_sistemas")
-  escalaInfra      Json             @map("escala_infra")
-  createdAt        DateTime         @default(now()) @map("created_at")
-  updatedAt        DateTime         @updatedAt @map("updated_at")
-  contatos         PlantaoContato[]
+  id                        String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
+  janelaSisInicio           String           
+  janelaSisFim              String           
+  janelaInfInicio           String           
+  janelaInfFim              String           
+  escalaSistemas            Json             
+  escalaInfra               Json             
 
-  @@map("plantao_config")
+  createdAt                 DateTime        @default(now()) @map("createdAt") @db.Timestamp(6)
+  updatedAt                 DateTime        @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
+  
+  contatos                  PlantaoContato[]
+
+  @@map("PlantaoConfig")
 }
 
 // ----- 28-plantaoContato.model.prisma -----
@@ -154,15 +156,16 @@ enum Area {
 }
 
 model PlantaoContato {
-  id        String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
-  configId  String        @db.Uuid @map("config_id")
-  nome      String
-  telefone  String
-  area      Area
-  createdAt DateTime      @default(now()) @map("created_at")
-  updatedAt DateTime      @updatedAt @map("updated_at")
+  id                    String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
+  nome                  String
+  telefone              String
+  area                  Area
 
-  config    PlantaoConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  createdAt             DateTime        @default(now()) @map("createdAt") @db.Timestamp(6)
+  updatedAt             DateTime        @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
 
-  @@map("plantao_contato")
+  configId              String          @db.Uuid
+  config                PlantaoConfig   @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  @@map("PlantaoContato")
 }
