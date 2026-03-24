@@ -1,0 +1,31 @@
+model AssinaturaPadrao {
+    id                      String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
+    caminhoBackground       String?
+    corFont                 String?
+    fontSize                String?
+
+    photoX                  Int?
+    photoY                  Int?
+    photoSize               Int?
+
+    nomeX                   Int?
+    nomeY                   Int?
+
+    departamentoX           Int?
+    departamentoY           Int?
+
+    telefoneX               Int?
+    telefoneY               Int?
+
+    logoX                   Int?
+    logoY                   Int?
+    logoHeight              Int?
+
+    criadoPor               String?
+    isAtual                 Boolean         @default(true)        
+    
+    createdAt               DateTime        @default(now()) @map("createdAt") @db.Timestamp(6)
+    updatedAt               DateTime        @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
+
+  @@map("AssinaturaPadrao")
+}

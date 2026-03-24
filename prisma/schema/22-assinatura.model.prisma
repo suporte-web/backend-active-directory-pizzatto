@@ -1,7 +1,7 @@
 model Assinatura {
     id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
     nome            String
-    cargo           String
+    departamento    String
     telefone        String?         
     email           String
     criadoPor       String 

@@ -9,6 +9,8 @@ type LdapUser = {
   mail?: string;
   userPrincipalName?: string;
   company?: string;
+  department?: string;
+  telephoneNumber?: string;
 };
 
 @Injectable()
@@ -100,6 +102,8 @@ export class AuthService {
         'mail',
         'userPrincipalName',
         'company',
+        'department',
+        'telephoneNumber',
       ],
       sizeLimit: 1,
     };
@@ -141,6 +145,8 @@ export class AuthService {
             userPrincipalName:
               getAttr('userPrincipalName') ?? obj.userPrincipalName,
             company: getAttr('company') ?? obj.company,
+            department: getAttr('department') ?? obj.department,
+            telephoneNumber: getAttr('telephoneNumber') ?? obj.telephoneNumber,
           };
         });
 
@@ -206,6 +212,8 @@ export class AuthService {
       name: adUser.displayName,
       mail: adUser.mail,
       company: adUser.company,
+      department: adUser.department,
+      telephoneNumber: adUser.telephoneNumber,
       roles,
     };
 
