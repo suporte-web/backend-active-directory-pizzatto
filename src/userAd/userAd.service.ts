@@ -568,7 +568,8 @@ export class UserAdService {
     let filtered = allUsers;
 
     if (pesquisa && pesquisa.trim()) {
-      const term = pesquisa.trim().toLowerCase();
+      const term = pesquisa.trim()
+      // .toLowerCase();
       filtered = filtered.filter((u: any) => {
         const fieldsToSearch = [
           u.cn,
@@ -577,9 +578,11 @@ export class UserAdService {
           u.userPrincipalName,
           u.mail,
           u.distinguishedName,
+          u.department,
+          u.company,
         ];
         return fieldsToSearch.some((field) =>
-          field ? String(field).toLowerCase().includes(term) : false,
+          field ? String(field).includes(term) : false,
         );
       });
     }
@@ -1145,4 +1148,17 @@ export class UserAdService {
       });
     });
   }
+
+  async getAllSetoresUsersAd(): Promise<string[]> {
+  const users = await this.getAllUsers();
+
+  const setores = users
+    .filter((u) => !u.isDisabled) // 👈 AQUI remove inativos
+    .map((u) => u.department)
+    .filter((d) => d && String(d).trim() !== '');
+
+  const setoresUnicos = Array.from(new Set(setores));
+
+  return setoresUnicos.sort();
+}
 }

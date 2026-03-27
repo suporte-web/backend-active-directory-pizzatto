@@ -202,3 +202,21 @@ model AssinaturaPadrao {
 
   @@map("AssinaturaPadrao")
 }
+
+// ----- 30-calendario.model.prisma -----
+model Calendario {
+    id                      String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
+    nome                    String
+    data                    String
+    horario                 String
+    local                   String?
+    departamento            String[]
+    descricao               String?
+
+    criadoPor               String?
+
+    createdAt               DateTime        @default(now()) @map("createdAt") @db.Timestamp(6)
+    updatedAt               DateTime        @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
+
+  @@map("Calendario")
+}

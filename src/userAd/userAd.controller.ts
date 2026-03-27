@@ -54,4 +54,12 @@ export class UserAdController {
   async resetPasswordAndForceChange(@Body() body: any) {
     return await this.adUserService.resetPasswordAndForceChange(body);
   }
+
+  @Get('get-all-setores-users-ad')
+  @ApiOperation({
+    summary: 'Encontra todos os setores dos colaboradores no AD',
+  })
+  async getAllSetoresUsersAd() {
+    return await this.adUserService.getAllSetoresUsersAd();
+  }
 }
