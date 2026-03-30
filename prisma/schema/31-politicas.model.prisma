@@ -1,0 +1,21 @@
+model Politicas {
+    id                      String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
+    caminhoArquivo          String?
+    nome                    String
+    descricao               String
+    tipoPolitica            String
+    departamento            String
+    responsavel             String
+    dataUpload              String?
+    criadoPor               String?
+    versao                  String          @default("1")
+    ativo                   Boolean         @default(true)
+    liberadoVisualizacao    Boolean         @default(false)
+
+    aceites                 PoliticaAceites[]
+
+    createdAt               DateTime        @default(now()) @map("createdAt") @db.Timestamp(6)
+    updatedAt               DateTime        @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
+
+    @@map("Politicas")
+}

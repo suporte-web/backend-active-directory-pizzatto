@@ -1,0 +1,12 @@
+model PoliticaAceites {
+    id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    colaborador   String
+    dataAceite    DateTime @default(now())
+
+    politicaId    String   @db.Uuid
+    politica      Politicas @relation(fields: [politicaId], references: [id])
+
+    createdAt     DateTime @default(now())
+    
+    @@map("PoliticaAceites")
+}

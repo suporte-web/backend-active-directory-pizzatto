@@ -62,4 +62,12 @@ export class UserAdController {
   async getAllSetoresUsersAd() {
     return await this.adUserService.getAllSetoresUsersAd();
   }
+
+  @Get('get-all-users-ad-actives')
+  @ApiOperation({
+    summary: 'Encontra todos os setores dos colaboradores no AD',
+  })
+  async getAllActiveUsers() {
+    return await this.adUserService.getAllActiveUsers();
+  }
 }

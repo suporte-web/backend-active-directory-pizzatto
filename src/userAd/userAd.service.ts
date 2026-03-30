@@ -568,7 +568,7 @@ export class UserAdService {
     let filtered = allUsers;
 
     if (pesquisa && pesquisa.trim()) {
-      const term = pesquisa.trim()
+      const term = pesquisa.trim();
       // .toLowerCase();
       filtered = filtered.filter((u: any) => {
         const fieldsToSearch = [
@@ -1150,15 +1150,21 @@ export class UserAdService {
   }
 
   async getAllSetoresUsersAd(): Promise<string[]> {
-  const users = await this.getAllUsers();
+    const users = await this.getAllUsers();
 
-  const setores = users
-    .filter((u) => !u.isDisabled) // 👈 AQUI remove inativos
-    .map((u) => u.department)
-    .filter((d) => d && String(d).trim() !== '');
+    const setores = users
+      .filter((u) => !u.isDisabled) // 👈 AQUI remove inativos
+      .map((u) => u.department)
+      .filter((d) => d && String(d).trim() !== '');
 
-  const setoresUnicos = Array.from(new Set(setores));
+    const setoresUnicos = Array.from(new Set(setores));
 
-  return setoresUnicos.sort();
-}
+    return setoresUnicos.sort();
+  }
+
+  async getAllActiveUsers(): Promise<any[]> {
+    const users = await this.getAllUsers();
+
+    return users.filter((u) => !u.isDisabled);
+  }
 }
