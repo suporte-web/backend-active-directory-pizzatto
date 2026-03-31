@@ -9,6 +9,8 @@ model Mural {
     importante      Boolean         @default(false)         
 
     filiais         String[]
+    likes           MuralLike[]
+    comentarios     MuralComentario[]
 
     createdAt       DateTime        @default(now()) @map("createdAt") @db.Timestamp(6)
     updatedAt       DateTime        @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)

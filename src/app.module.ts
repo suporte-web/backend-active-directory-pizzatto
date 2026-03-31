@@ -7,6 +7,8 @@ import { OrganogramaModule } from './organograma/organograma.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuditLogsModule } from './auditLogs/audit-logs.module';
 import { MuralModule } from './mural/mural.module';
+import { MuralLikeModule } from './muralLike/muralLike.module';
+import { MuralComentarioModule } from './muralComentario/muralComentario.module';
 
 @Module({
   imports: [
@@ -16,6 +18,8 @@ import { MuralModule } from './mural/mural.module';
     OrganogramaModule,
     AuditLogsModule,
     MuralModule,
+    MuralLikeModule,
+    MuralComentarioModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -35,7 +35,7 @@ export class MuralService {
       data: {
         acao: `Criou o Mural ${create.titulo}`,
         entidade: user.name,
-        filialEntidade: user.filial,
+        filialEntidade: user?.company,
         ipAddress: ip,
       },
     });

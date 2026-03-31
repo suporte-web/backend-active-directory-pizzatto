@@ -30,6 +30,8 @@ model Mural {
     importante      Boolean         @default(false)         
 
     filiais         String[]
+    likes           MuralLike[]
+    comentarios     MuralComentario[]
 
     createdAt       DateTime        @default(now()) @map("createdAt") @db.Timestamp(6)
     updatedAt       DateTime        @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
@@ -232,7 +234,7 @@ model Politicas {
     responsavel             String
     dataUpload              String?
     criadoPor               String?
-    versão                  String          @default("1")
+    versao                  String          @default("1")
     ativo                   Boolean         @default(true)
     liberadoVisualizacao    Boolean         @default(false)
 
@@ -256,4 +258,35 @@ model PoliticaAceites {
     createdAt     DateTime @default(now())
     
     @@map("PoliticaAceites")
+}
+
+// ----- 33-muralLike.model.prisma -----
+model MuralLike {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  muralId    String   @db.Uuid
+  codigo     String
+  nome       String
+  createdAt  DateTime @default(now()) @db.Timestamp(6)
+
+  mural      Mural    @relation(fields: [muralId], references: [id], onDelete: Cascade)
+
+  @@unique([muralId, codigo])
+  @@index([muralId])
+  @@map("MuralLike")
+}
+
+// ----- 34-muralComentario.model.prisma -----
+model MuralComentario {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  muralId    String   @db.Uuid
+  codigo     String
+  nome       String
+  comentario String
+  createdAt  DateTime @default(now()) @db.Timestamp(6)
+  updatedAt  DateTime @default(now()) @updatedAt @db.Timestamp(6)
+
+  mural      Mural    @relation(fields: [muralId], references: [id], onDelete: Cascade)
+
+  @@index([muralId])
+  @@map("MuralComentario")
 }

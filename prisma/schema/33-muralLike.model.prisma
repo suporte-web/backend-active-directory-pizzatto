@@ -1,0 +1,13 @@
+model MuralLike {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  muralId    String   @db.Uuid
+  codigo     String
+  nome       String
+  createdAt  DateTime @default(now()) @db.Timestamp(6)
+
+  mural      Mural    @relation(fields: [muralId], references: [id], onDelete: Cascade)
+
+  @@unique([muralId, codigo])
+  @@index([muralId])
+  @@map("MuralLike")
+}
