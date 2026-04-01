@@ -4,7 +4,7 @@ model Calendario {
     data                    String
     horario                 String
     local                   String?
-    departamento            String[]
+    colaboradores           String[]
     descricao               String?
 
     criadoPor               String?
