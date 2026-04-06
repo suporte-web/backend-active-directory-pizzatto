@@ -26,12 +26,17 @@ interface OrganogramaNode {
   subordinados?: OrganogramaNode[];
 }
 
+type ChildrenLayoutMode =
+  | 'horizontal'
+  | 'vertical'
+  | 'mixed'
+  | 'stacked-with-deep-branch';
+
 @Injectable()
 export class OrganogramaPdfService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(OrganogramaPdfService.name);
   private browser: puppeteer.Browser | null = null;
 
-  // proteção contra recursão infinita / árvore anormal
   private static readonly MAX_TREE_DEPTH = 30;
 
   constructor(private readonly organogramaService: OrganogramaService) {}
@@ -73,8 +78,8 @@ export class OrganogramaPdfService implements OnModuleInit, OnModuleDestroy {
       page = await browser.newPage();
 
       await page.setViewport({
-        width: 1600,
-        height: 1200,
+        width: 6000,
+        height: 4000,
         deviceScaleFactor: 1,
       });
 
@@ -117,7 +122,7 @@ export class OrganogramaPdfService implements OnModuleInit, OnModuleDestroy {
         );
       }
 
-      const pdf = await this.gerarPdfDaPagina(page, tipo, dimensions);
+      const pdf = await this.gerarPdfDaPagina(page, dimensions);
 
       if (!pdf?.length) {
         throw new BadRequestException('O PDF gerado está vazio.');
@@ -206,57 +211,22 @@ export class OrganogramaPdfService implements OnModuleInit, OnModuleDestroy {
 
   private async gerarPdfDaPagina(
     page: puppeteer.Page,
-    tipo: TipoGeracaoPdf,
     dimensions: { width: number; height: number },
   ): Promise<Uint8Array> {
-    if (tipo === 'colaborador') {
-      const scale = this.calcularEscalaParaA3(
-        dimensions.width,
-        dimensions.height,
-      );
-
-      return page.pdf({
-        printBackground: true,
-        format: 'A3',
-        landscape: true,
-        preferCSSPageSize: false,
-        pageRanges: '1',
-        scale,
-        margin: {
-          top: '20px',
-          right: '20px',
-          bottom: '20px',
-          left: '20px',
-        },
-      });
-    }
-
-    const padding = 40;
-
-    // limites conservadores para reduzir chance de crash / invalid size
-    const maxPdfWidth = 14000;
-    const maxPdfHeight = 10000;
-
-    const pdfWidth = Math.max(
-      800,
-      Math.min(dimensions.width + padding, maxPdfWidth),
-    );
-    const pdfHeight = Math.max(
-      600,
-      Math.min(dimensions.height + padding, maxPdfHeight),
-    );
+    const padding = 300;
 
     return page.pdf({
       printBackground: true,
+      width: `${dimensions.width + padding}px`,
+      height: `${dimensions.height + padding}px`,
       preferCSSPageSize: false,
-      width: `${pdfWidth}px`,
-      height: `${pdfHeight}px`,
       pageRanges: '1',
+      scale: 1,
       margin: {
-        top: '20px',
-        right: '20px',
-        bottom: '20px',
-        left: '20px',
+        top: '8px',
+        right: '8px',
+        bottom: '8px',
+        left: '8px',
       },
     });
   }
@@ -317,18 +287,28 @@ export class OrganogramaPdfService implements OnModuleInit, OnModuleDestroy {
     const usarCorCompleto = tipo === 'completo' || tipo === 'colaborador';
 
     const arvoresHtml = dados
-      .map((node) => this.renderNode(node, tipo, true, 0, new WeakSet()))
+      .map((node) => this.renderNode(node, tipo, true, 0, new Set()))
       .join('');
+
+    const connectorWidth = isCompleto ? '1px' : '2px';
+    const connectorHeight = isCompleto ? '6px' : '8px';
+    const connectorColor = isCompleto ? '#9ca3af' : '#cbd5e1';
+    const childrenGap = isCompleto ? '8px' : '10px';
+    const childrenMarginTop = isCompleto ? '8px' : '18px';
+    const childrenPaddingTop = isCompleto ? '8px' : '18px';
+    const mixedGap = isCompleto ? '8px' : '12px';
+    const groupPaddingTop = isCompleto ? '8px' : '14px';
+    const leafColumns = 2;
 
     const nodeCardStyle = usarCorCompleto
       ? `
         .node-card {
-          min-width: ${isCompleto ? '54px' : '180px'};
-          max-width: ${isCompleto ? '72px' : '220px'};
+          min-width: ${isCompleto ? '88px' : '180px'};
+          max-width: ${isCompleto ? '120px' : '220px'};
           background: #ffffff;
           border: 1px solid #f97316;
-          border-radius: ${isCompleto ? '2px' : '10px'};
-          padding: ${isCompleto ? '1px 2px' : '8px 10px'};
+          border-radius: ${isCompleto ? '4px' : '10px'};
+          padding: ${isCompleto ? '5px 6px' : '8px 10px'};
           text-align: center;
           box-shadow: ${isCompleto ? 'none' : '0 2px 6px rgba(0, 0, 0, 0.05)'};
           page-break-inside: avoid;
@@ -337,28 +317,27 @@ export class OrganogramaPdfService implements OnModuleInit, OnModuleDestroy {
         }
 
         .node-name {
-          font-size: ${isCompleto ? '5px' : '12px'};
+          font-size: ${isCompleto ? '8px' : '12px'};
           font-weight: 700;
           color: #111827;
           margin: ${isCompleto ? '0' : '0 0 4px 0'};
           word-break: break-word;
           overflow-wrap: anywhere;
-          line-height: ${isCompleto ? '1.05' : '1.2'};
+          line-height: ${isCompleto ? '1.1' : '1.2'};
         }
 
         .node-meta {
-          font-size: ${isCompleto ? '4px' : '10px'};
+          font-size: ${isCompleto ? '6px' : '10px'};
           color: #374151;
           margin-top: ${isCompleto ? '1px' : '2px'};
           word-break: break-word;
           overflow-wrap: anywhere;
-          line-height: ${isCompleto ? '1.05' : '1.25'};
+          line-height: ${isCompleto ? '1.1' : '1.25'};
         }
       `
       : `
         .node-card {
-          min-width: 180px;
-          max-width: 220px;
+          width: 180px;
           background: #f9fafb;
           border: 1px solid #d1d5db;
           border-radius: 10px;
@@ -387,102 +366,6 @@ export class OrganogramaPdfService implements OnModuleInit, OnModuleDestroy {
           word-break: break-word;
           overflow-wrap: anywhere;
           line-height: 1.25;
-        }
-      `;
-
-    const childrenStyle = isCompleto
-      ? `
-        .children {
-          margin-top: 7px;
-          display: flex;
-          justify-content: center;
-          align-items: flex-start;
-          gap: 3px;
-          flex-wrap: nowrap;
-          position: relative;
-          min-width: max-content;
-          padding-top: 7px;
-          flex: 0 0 auto;
-        }
-
-        .children::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 50%;
-          width: 1px;
-          height: 4px;
-          background: #9ca3af;
-          transform: translateX(-50%);
-        }
-
-        .children.has-many::after {
-          content: '';
-          position: absolute;
-          top: 4px;
-          left: 50%;
-          width: calc(100% - 6px);
-          height: 1px;
-          background: #9ca3af;
-          transform: translateX(-50%);
-        }
-
-        .child::before {
-          content: '';
-          position: absolute;
-          top: -4px;
-          left: 50%;
-          width: 1px;
-          height: 4px;
-          background: #9ca3af;
-          transform: translateX(-50%);
-        }
-      `
-      : `
-        .children {
-          margin-top: 18px;
-          display: flex;
-          justify-content: center;
-          align-items: flex-start;
-          gap: 10px;
-          flex-wrap: nowrap;
-          position: relative;
-          min-width: max-content;
-          padding-top: 18px;
-          flex: 0 0 auto;
-        }
-
-        .children::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 50%;
-          width: 2px;
-          height: 8px;
-          background: #cbd5e1;
-          transform: translateX(-50%);
-        }
-
-        .children.has-many::after {
-          content: '';
-          position: absolute;
-          top: 8px;
-          left: 50%;
-          width: calc(100% - 12px);
-          height: 2px;
-          background: #cbd5e1;
-          transform: translateX(-50%);
-        }
-
-        .child::before {
-          content: '';
-          position: absolute;
-          top: -8px;
-          left: 50%;
-          width: 2px;
-          height: 8px;
-          background: #cbd5e1;
-          transform: translateX(-50%);
         }
       `;
 
@@ -519,15 +402,17 @@ export class OrganogramaPdfService implements OnModuleInit, OnModuleDestroy {
             }
 
             .page {
-              display: inline-block;
-              min-width: max-content;
+              display: block;
               background: #e5e7eb;
+              width: max-content;
+              min-width: max-content;
             }
 
             .header {
               margin-bottom: 8px;
               border-bottom: 1px solid #9ca3af;
               padding-bottom: 6px;
+              width: 100%;
             }
 
             .title {
@@ -543,24 +428,31 @@ export class OrganogramaPdfService implements OnModuleInit, OnModuleDestroy {
             }
 
             #pdf-page-content {
-              display: inline-block;
+              display: block;
+              width: max-content;
+              min-width: max-content;
             }
 
             #organograma-print-area {
-              display: inline-flex;
+              display: flex;
               flex-direction: column;
               align-items: flex-start;
               gap: 6px;
-              min-width: max-content;
               padding: 4px;
               background: #e5e7eb;
+              width: max-content;
+              min-width: max-content;
             }
 
             #organograma-print-area.multiple-roots {
               display: flex;
               flex-direction: row;
               align-items: flex-start;
+              justify-content: flex-start;
+              flex-wrap: nowrap;
               gap: 20px;
+              width: max-content;
+              min-width: 100%;
             }
 
             .tree-root {
@@ -585,7 +477,125 @@ export class OrganogramaPdfService implements OnModuleInit, OnModuleDestroy {
 
             ${nodeCardStyle}
 
-            ${childrenStyle}
+            .children,
+            .children-group {
+              display: flex;
+              position: relative;
+            }
+
+            .children {
+              margin-top: ${childrenMarginTop};
+              padding-top: ${childrenPaddingTop};
+            }
+
+            .children-split {
+              display: flex;
+              flex-direction: row;
+              align-items: flex-start;
+              justify-content: center;
+              gap: ${mixedGap};
+              flex-wrap: nowrap;
+            }
+
+            .children-stack-group {
+              display: grid;
+              grid-template-columns: 1fr;
+              row-gap: ${childrenGap};
+              column-gap: 0;
+              justify-items: center;
+            }
+
+            .children-deep-group {
+              display: flex;
+              flex-direction: row;
+              align-items: flex-start;
+              gap: ${childrenGap};
+              flex-wrap: nowrap;
+            }
+
+            .children::before,
+            .children-group::before {
+              content: '';
+              position: absolute;
+              top: 0;
+              left: 50%;
+              width: ${connectorWidth};
+              height: ${connectorHeight};
+              background: ${connectorColor};
+              transform: translateX(-50%);
+            }
+
+            .children-horizontal {
+              flex-direction: row;
+              justify-content: center;
+              align-items: flex-start;
+              gap: ${childrenGap};
+              flex-wrap: nowrap;
+            }
+
+            .children-vertical {
+              display: grid;
+              grid-template-columns: repeat(${leafColumns}, 1fr);
+              justify-content: center;
+              align-items: start;
+              column-gap: ${childrenGap};
+              row-gap: ${childrenGap};
+              position: relative;
+              width: max-content;
+            }
+
+            .children-mixed {
+              flex-direction: column;
+              align-items: center;
+              gap: ${mixedGap};
+            }
+
+            .children-mixed-compact {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: ${childrenGap};
+            }
+
+            .children-leaf-compact-group {
+              display: grid;
+              grid-template-columns: repeat(2, max-content);
+              justify-content: center;
+              align-items: start;
+              column-gap: ${childrenGap};
+              row-gap: ${childrenGap};
+            }
+
+            .children-group {
+              padding-top: ${groupPaddingTop};
+            }
+
+            .children-leaf-group {
+              justify-content: center;
+              position: relative;
+              padding-top: calc(${groupPaddingTop} + ${connectorHeight});
+            }
+
+            .children-horizontal::after,
+            .children-split::after {
+              content: '';
+              position: absolute;
+              top: ${connectorHeight};
+              left: 0;
+              width: 100%;
+              height: ${connectorWidth};
+              background: ${connectorColor};
+            }
+
+            .children-all-leaders-group {
+              display: flex;
+              flex-direction: row;
+              justify-content: center;
+              align-items: flex-start;
+              gap: ${childrenGap};
+              flex-wrap: nowrap;
+              width: max-content;
+            }
 
             .child {
               display: flex;
@@ -594,7 +604,28 @@ export class OrganogramaPdfService implements OnModuleInit, OnModuleDestroy {
               position: relative;
               page-break-inside: avoid;
               break-inside: avoid;
-              flex: 0 0 auto;
+            }
+
+            .child::before {
+              content: '';
+              position: absolute;
+              top: calc(-1 * ${connectorHeight});
+              left: 50%;
+              width: ${connectorWidth};
+              height: ${connectorHeight};
+              background: ${connectorColor};
+              transform: translateX(-50%);
+            }
+
+            .child-leaf::before {
+              content: '';
+              position: absolute;
+              top: calc(-1 * ${connectorHeight});
+              left: 50%;
+              width: ${connectorWidth};
+              height: ${connectorHeight};
+              background: ${connectorColor};
+              transform: translateX(-50%);
             }
 
             .empty {
@@ -641,12 +672,188 @@ export class OrganogramaPdfService implements OnModuleInit, OnModuleDestroy {
     `;
   }
 
+  private obterSubordinados(node?: OrganogramaNode): OrganogramaNode[] {
+    if (!node || !Array.isArray(node.subordinados)) {
+      return [];
+    }
+
+    return node.subordinados.filter(
+      (subordinado): subordinado is OrganogramaNode => Boolean(subordinado),
+    );
+  }
+
+  private possuiSubordinados(node?: OrganogramaNode): boolean {
+    return this.obterSubordinados(node).length > 0;
+  }
+
+  private possuiSubordinadoComSubordinados(node?: OrganogramaNode): boolean {
+    const subordinados = this.obterSubordinados(node);
+
+    return subordinados.some((subordinado) =>
+      this.possuiSubordinados(subordinado),
+    );
+  }
+
+  private ehLiderProfundo(node?: OrganogramaNode): boolean {
+    return (
+      this.possuiSubordinados(node) &&
+      this.possuiSubordinadoComSubordinados(node)
+    );
+  }
+
+  private definirLayoutFilhos(
+    subordinados: OrganogramaNode[],
+  ): ChildrenLayoutMode {
+    const lideresProfundos = subordinados.filter((subordinado) =>
+      this.ehLiderProfundo(subordinado),
+    );
+
+    const lideresSimples = subordinados.filter(
+      (subordinado) =>
+        this.possuiSubordinados(subordinado) &&
+        !this.ehLiderProfundo(subordinado),
+    );
+
+    const colaboradoresSemSubordinados = subordinados.filter(
+      (subordinado) => !this.possuiSubordinados(subordinado),
+    );
+
+    // Caso especial:
+    // existe pelo menos um ramo mais profundo e vários outros irmãos simples.
+    // Mantém o ramo profundo ao lado e empilha os demais na vertical.
+    if (
+      lideresProfundos.length >= 1 &&
+      lideresSimples.length + colaboradoresSemSubordinados.length >= 1
+    ) {
+      return 'stacked-with-deep-branch';
+    }
+
+    if (!lideresProfundos.length && !lideresSimples.length) {
+      return 'vertical';
+    }
+
+    if (!colaboradoresSemSubordinados.length) {
+      return 'horizontal';
+    }
+
+    return 'mixed';
+  }
+
+  private renderChildren(
+    subordinados: OrganogramaNode[],
+    tipo: TipoGeracaoPdf,
+    depth: number,
+    visited: Set<OrganogramaNode>,
+  ): string {
+    if (!subordinados.length) {
+      return '';
+    }
+
+    const layout = this.definirLayoutFilhos(subordinados);
+    const todosSaoFolhas = subordinados.every(
+      (subordinado) => !this.possuiSubordinados(subordinado),
+    );
+
+    if (layout === 'stacked-with-deep-branch') {
+      const nodesOrdenados = subordinados;
+
+      return `
+    <div class="children children-horizontal depth-${depth}">
+      ${this.renderChildrenItems(
+        nodesOrdenados,
+        tipo,
+        depth,
+        visited,
+        'default',
+      )}
+    </div>
+  `;
+    }
+
+    if (layout === 'vertical') {
+      return `
+      <div class="children children-vertical depth-${depth}">
+        ${this.renderChildrenItems(
+          subordinados,
+          tipo,
+          depth,
+          visited,
+          todosSaoFolhas ? 'leaf' : 'default',
+        )}
+      </div>
+    `;
+    }
+
+    if (layout === 'horizontal') {
+      return `
+      <div class="children children-horizontal depth-${depth}">
+        ${this.renderChildrenItems(subordinados, tipo, depth, visited)}
+      </div>
+    `;
+    }
+
+    const lideres = subordinados.filter((subordinado) =>
+      this.possuiSubordinados(subordinado),
+    );
+
+    const colaboradoresSemSubordinados = subordinados.filter(
+      (subordinado) => !this.possuiSubordinados(subordinado),
+    );
+
+    return `
+    <div class="children children-mixed depth-${depth}">
+      ${
+        lideres.length
+          ? `
+            <div class="children-group children-horizontal">
+              ${this.renderChildrenItems(lideres, tipo, depth, visited)}
+            </div>
+          `
+          : ''
+      }
+      ${
+        colaboradoresSemSubordinados.length
+          ? `
+            <div class="children-group children-vertical children-leaf-group">
+              ${this.renderChildrenItems(
+                colaboradoresSemSubordinados,
+                tipo,
+                depth,
+                visited,
+                'leaf',
+              )}
+            </div>
+          `
+          : ''
+      }
+    </div>
+  `;
+  }
+
+  private renderChildrenItems(
+    nodes: OrganogramaNode[],
+    tipo: TipoGeracaoPdf,
+    depth: number,
+    visited: Set<OrganogramaNode>,
+    variant: 'default' | 'leaf' = 'default',
+  ): string {
+    return nodes
+      .map(
+        (filho) => `
+          <div class="child ${variant === 'leaf' ? 'child-leaf' : 'child-branch'}">
+            ${this.renderNode(filho, tipo, false, depth + 1, visited)}
+          </div>
+        `,
+      )
+      .join('');
+  }
+
   private renderNode(
     node: OrganogramaNode,
     tipo: TipoGeracaoPdf,
     isRoot = false,
     depth = 0,
-    visited = new WeakSet<object>(),
+    visited = new Set<OrganogramaNode>(),
   ): string {
     if (!node) {
       return '';
@@ -662,7 +869,7 @@ export class OrganogramaPdfService implements OnModuleInit, OnModuleDestroy {
       `;
     }
 
-    if (visited.has(node as object)) {
+    if (visited.has(node)) {
       return `
         <div class="${isRoot ? 'tree-root' : 'node-wrapper'}">
           <div class="node-card">
@@ -672,7 +879,7 @@ export class OrganogramaPdfService implements OnModuleInit, OnModuleDestroy {
       `;
     }
 
-    visited.add(node as object);
+    visited.add(node);
 
     const nome = this.escapeHtml(node.nome ?? node.username ?? 'Sem nome');
     const username = this.escapeHtml(node.username ?? '');
@@ -680,48 +887,37 @@ export class OrganogramaPdfService implements OnModuleInit, OnModuleDestroy {
     const email = this.escapeHtml(node.email ?? '');
     const lider = this.escapeHtml(node.lider ?? '');
 
-    const subordinados = Array.isArray(node.subordinados)
-      ? node.subordinados.filter(Boolean)
-      : [];
+    const subordinados = this.obterSubordinados(node);
 
-    const childrenClass =
-      subordinados.length > 1 ? 'children has-many' : 'children';
+    const mostrarUsername = tipo !== 'completo';
+    const mostrarSetor = true;
+    const mostrarEmail = tipo !== 'completo';
+    const mostrarLider = tipo === 'colaborador';
 
-    // const mostrarUsername = tipo !== 'completo';
-    // const mostrarCargo = tipo !== 'completo';
-    // const mostrarEmail = tipo !== 'completo';
-    // const mostrarLider = tipo === 'colaborador';
+    const childrenHtml = this.renderChildren(
+      subordinados,
+      tipo,
+      depth,
+      visited,
+    );
 
-    const childrenHtml =
-      subordinados.length > 0
-        ? `
-          <div class="${childrenClass}">
-            ${subordinados
-              .map(
-                (filho) => `
-                  <div class="child">
-                    ${this.renderNode(filho, tipo, false, depth + 1, visited)}
-                  </div>
-                `,
-              )
-              .join('')}
-          </div>
-        `
-        : '';
-
-    return `
+    const html = `
       <div class="${isRoot ? 'tree-root' : 'node-wrapper'}">
         <div class="node-card">
           <div class="node-name">${nome}</div>
-          ${username ? `<div class="node-meta">${username}</div>` : ''}
-          ${setor ? `<div class="node-meta">${setor}</div>` : ''}
-          ${email ? `<div class="node-meta">${email}</div>` : ''}
-          ${lider ? `<div class="node-meta">Líder: ${lider}</div>` : ''}
+          ${mostrarUsername && username ? `<div class="node-meta">${username}</div>` : ''}
+          ${mostrarSetor && setor ? `<div class="node-meta">${setor}</div>` : ''}
+          ${mostrarEmail && email ? `<div class="node-meta">${email}</div>` : ''}
+          ${mostrarLider && lider ? `<div class="node-meta">Líder: ${lider}</div>` : ''}
         </div>
 
         ${childrenHtml}
       </div>
     `;
+
+    visited.delete(node);
+
+    return html;
   }
 
   private escapeHtml(value: string): string {
@@ -750,9 +946,8 @@ export class OrganogramaPdfService implements OnModuleInit, OnModuleDestroy {
     contentWidth: number,
     contentHeight: number,
   ): number {
-    // A3 landscape com margem aproximada
-    const usableWidth = 1500;
-    const usableHeight = 1000;
+    const usableWidth = 2500;
+    const usableHeight = 1500;
 
     const scaleX = usableWidth / contentWidth;
     const scaleY = usableHeight / contentHeight;
