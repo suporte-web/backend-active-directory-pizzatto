@@ -1,8 +1,8 @@
 import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { AuthGuard } from 'src/auth/auth.guard';
-import { ClientIp } from 'src/decorator/client-ip.decorator';
-import { User } from 'src/decorator/user.decorator';
+import { AuthGuard } from '../auth/auth.guard';
+import { ClientIp } from '../decorator/client-ip.decorator';
+import { User } from '../decorator/user.decorator';
 import { MuralComentarioService } from './muralComentario.service';
 
 @ApiTags('MuralComentario')

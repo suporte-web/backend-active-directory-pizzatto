@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { OrganogramaController } from './organograma.controller';
 import { OrganogramaService } from './organograma.service';
-import { AuthModule } from 'src/auth/auth.module';
+import { AuthModule } from '../auth/auth.module';
 import { OrganogramaPdfService } from './organograma-pdf.service';
 
 @Module({

@@ -5,12 +5,11 @@ import {
   NotFoundException,
   UseGuards,
   Query,
-  Header,
   Res,
 } from '@nestjs/common';
 import { OrganogramaService } from './organograma.service';
 import { ApiTags } from '@nestjs/swagger';
-import { AuthGuard } from 'src/auth/auth.guard';
+import { AuthGuard } from '../auth/auth.guard';
 import { OrganogramaPdfService } from './organograma-pdf.service';
 import type { Response } from 'express';
 

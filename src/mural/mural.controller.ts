@@ -8,10 +8,10 @@ import {
   Get,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags, ApiConsumes } from '@nestjs/swagger';
-import { AuthGuard } from 'src/auth/auth.guard';
+import { AuthGuard } from '../auth/auth.guard';
 import { MuralService } from './mural.service';
-import { User } from 'src/decorator/user.decorator';
-import { ClientIp } from 'src/decorator/client-ip.decorator';
+import { User } from '../decorator/user.decorator';
+import { ClientIp } from '../decorator/client-ip.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
