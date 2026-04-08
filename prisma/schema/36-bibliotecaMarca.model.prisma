@@ -1,0 +1,12 @@
+model BibliotecaMarca {
+    id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    nome            String
+    caminhoArquivo  String?
+    status          Boolean     @default(true)
+    descricao       String
+
+    createdAt       DateTime    @default(now()) @db.Timestamp(6)
+    updatedAt       DateTime    @default(now()) @updatedAt @db.Timestamp(6)
+
+    @@map("BibliotecaMarca")
+}

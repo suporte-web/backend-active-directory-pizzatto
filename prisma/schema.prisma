@@ -290,3 +290,32 @@ model MuralComentario {
   @@index([muralId])
   @@map("MuralComentario")
 }
+
+// ----- 35-paginaInstitucional.model.prisma -----
+model PaginaInstitucional {
+    id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    titulo          String
+    descricao       String
+    caminhoImagem   String[]
+    dataAtualizacao String
+    status          Boolean     @default(true)
+
+    createdAt       DateTime    @default(now()) @db.Timestamp(6)
+    updatedAt       DateTime    @default(now()) @updatedAt @db.Timestamp(6)
+
+    @@map("PaginaInstitucional")
+}
+
+// ----- 36-bibliotecaMarca.model.prisma -----
+model BibliotecaMarca {
+    id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    nome            String
+    caminhoArquivo  String?
+    status          Boolean     @default(true)
+    descricao       String
+
+    createdAt       DateTime    @default(now()) @db.Timestamp(6)
+    updatedAt       DateTime    @default(now()) @updatedAt @db.Timestamp(6)
+
+    @@map("BibliotecaMarca")
+}

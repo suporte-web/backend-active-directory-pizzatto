@@ -1,0 +1,13 @@
+model PaginaInstitucional {
+    id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    titulo          String
+    descricao       String
+    caminhoImagem   String[]
+    dataAtualizacao String
+    status          Boolean     @default(true)
+
+    createdAt       DateTime    @default(now()) @db.Timestamp(6)
+    updatedAt       DateTime    @default(now()) @updatedAt @db.Timestamp(6)
+
+    @@map("PaginaInstitucional")
+}
