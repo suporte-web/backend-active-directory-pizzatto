@@ -25,6 +25,7 @@ export class MuralService {
         mensagem: body.mensagem,
         validoAte: body.validoAte,
         criadoPor: user.name,
+        departamentoCriador: user.department,
         caminhoImagem,
         filiais,
         importante,

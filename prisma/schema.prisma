@@ -20,21 +20,22 @@ datasource db {
 
 // ----- 20-mural.model.prisma -----
 model Mural {
-    id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
-    titulo          String
-    mensagem        String
-    caminhoImagem   String?
-    ativo           Boolean         @default(true)
-    validoAte       String
-    criadoPor       String 
-    importante      Boolean         @default(false)         
+    id                  String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
+    titulo              String
+    mensagem            String
+    caminhoImagem       String?
+    ativo               Boolean         @default(true)
+    validoAte           String
+    criadoPor           String 
+    importante          Boolean         @default(false)  
+    departamentoCriador String?
 
-    filiais         String[]
-    likes           MuralLike[]
-    comentarios     MuralComentario[]
+    filiais             String[]
+    likes               MuralLike[]
+    comentarios         MuralComentario[]
 
-    createdAt       DateTime        @default(now()) @map("createdAt") @db.Timestamp(6)
-    updatedAt       DateTime        @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
+    createdAt           DateTime        @default(now()) @map("createdAt") @db.Timestamp(6)
+    updatedAt           DateTime        @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
 
   @@map("Mural")
 }
