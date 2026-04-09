@@ -1,16 +1,14 @@
 model PlantaoConfig {
-  id                        String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
-  janelaSisInicio           String           
-  janelaSisFim              String           
-  janelaInfInicio           String           
-  janelaInfFim              String           
-  escalaSistemas            Json             
-  escalaInfra               Json             
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
+  janelaInicio   String
+  janelaFim      String
+  dataJanela     String
 
-  createdAt                 DateTime        @default(now()) @map("createdAt") @db.Timestamp(6)
-  updatedAt                 DateTime        @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
-  
-  contatos                  PlantaoContato[]
+  createdAt      DateTime         @default(now()) @map("createdAt") @db.Timestamp(6)
+  updatedAt      DateTime         @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
+
+  plantonistaId  String?          @db.Uuid
+  plantonista    PlantaoContato?  @relation("Plantonista", fields: [plantonistaId], references: [id])
 
   @@map("PlantaoConfig")
 }
