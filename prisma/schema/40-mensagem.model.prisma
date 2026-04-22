@@ -1,0 +1,29 @@
+model Mensagem {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversaId   String   @db.Uuid
+  remetenteId  String   @db.Uuid
+  conteudo     String?
+  tipo         TipoMensagem @default(TEXTO)
+
+  arquivoUrl   String?
+  nomeArquivo  String?
+  nomeSalvo    String?
+  mimeType     String?
+  tamanhoBytes Int?
+
+  createdAt    DateTime @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime @default(now()) @updatedAt @db.Timestamp(6)
+  deletedAt    DateTime?
+
+  conversa     Conversa    @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+  remetente    UsuarioChat @relation(fields: [remetenteId], references: [id])
+
+  @@index([conversaId, createdAt])
+  @@index([remetenteId])
+}
+
+enum TipoMensagem {
+  TEXTO
+  IMAGEM
+  ARQUIVO
+}

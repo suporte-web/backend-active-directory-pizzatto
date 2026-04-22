@@ -1,0 +1,18 @@
+model ParticipanteConversa {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversaId      String        @db.Uuid
+  usuarioId       String        @db.Uuid
+  entrouEm        DateTime      @default(now())
+  ultimaLeituraEm DateTime?
+  admin           Boolean       @default(false)
+
+  conversa Conversa             @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+  usuario UsuarioChat           @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime    @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime    @default(now()) @updatedAt @db.Timestamp(6)
+
+  @@unique([conversaId, usuarioId])
+  @@index([conversaId])
+  @@index([usuarioId])
+}

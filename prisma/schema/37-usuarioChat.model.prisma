@@ -1,0 +1,22 @@
+model UsuarioChat {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  adObjectGuid   String   @unique
+  usuario        String
+  nome           String
+  email          String?
+  empresa        String?
+  departamento   String?
+  telefone       String?
+  ativo          Boolean  @default(true)
+
+  createdAt       DateTime    @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime    @default(now()) @updatedAt @db.Timestamp(6)
+
+  conversasCriadas Conversa[]        @relation("CriadorConversa")
+  participacoes    ParticipanteConversa[]
+  mensagens        Mensagem[]
+
+  @@index([usuario])
+  @@index([email])
+  @@index([nome])
+}

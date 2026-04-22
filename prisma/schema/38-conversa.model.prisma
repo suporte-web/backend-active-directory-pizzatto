@@ -1,0 +1,24 @@
+enum TipoConversa {
+  DIRETA
+  GRUPO
+}
+
+model Conversa {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tipo            TipoConversa
+  nome            String?
+  chaveDireta     String?           @unique
+  criadoPorId     String            @db.Uuid
+  ultimaMensagemEm DateTime?
+  
+  createdAt       DateTime    @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime    @default(now()) @updatedAt @db.Timestamp(6)
+
+  criadoPor   UsuarioChat           @relation("CriadorConversa", fields: [criadoPorId], references: [id])
+  participantes ParticipanteConversa[]
+  mensagens     Mensagem[]
+
+  @@index([tipo])
+  @@index([criadoPorId])
+  @@index([ultimaMensagemEm])
+}

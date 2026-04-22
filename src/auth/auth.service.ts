@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as ldap from 'ldapjs';
 
 type LdapUser = {
+  adObjectGuid: string;
   dn: string;
   sAMAccountName?: string;
   displayName?: string;
@@ -28,11 +29,10 @@ export class AuthService {
   ).trim();
 
   private readonly accessSecret = process.env.JWT_ACCESS_SECRET!;
-  private readonly accessTtl = Number(process.env.JWT_ACCESS_TTL || 900); // 15 min
+  private readonly accessTtl = Number(process.env.JWT_ACCESS_TTL || 900);
 
   async verifyAccessToken(token: string) {
     try {
-      // retorna o payload que você colocou no login()
       return await this.jwt.verifyAsync(token, { secret: this.accessSecret });
     } catch {
       throw new UnauthorizedException('Token inválido');
@@ -48,7 +48,6 @@ export class AuthService {
     };
 
     if (this.url.startsWith('ldaps://')) {
-      // Em produção, ideal é confiar na CA (NODE_EXTRA_CA_CERTS) e NÃO desabilitar validação
       options.tlsOptions = { rejectUnauthorized: false };
     }
 
@@ -56,7 +55,6 @@ export class AuthService {
 
     client.on('error', (err: any) => {
       if (err?.code === 'ECONNRESET') return;
-      // console.error('[LDAP] client error:', err);
     });
 
     return client;
@@ -90,6 +88,109 @@ export class AuthService {
       .replace(/\0/g, '\\00');
   }
 
+  private bufferToGuid(buffer: Buffer): string {
+    if (buffer.length !== 16) {
+      throw new Error(`objectGUID inválido: tamanho ${buffer.length}`);
+    }
+
+    const hex = buffer.toString('hex');
+
+    return [
+      hex.slice(6, 8) + hex.slice(4, 6) + hex.slice(2, 4) + hex.slice(0, 2),
+      hex.slice(10, 12) + hex.slice(8, 10),
+      hex.slice(14, 16) + hex.slice(12, 14),
+      hex.slice(16, 20),
+      hex.slice(20, 32),
+    ].join('-');
+  }
+
+  private getBinaryAttributeFromEntry(entry: any, attrName: string): Buffer | undefined {
+    const normalized = attrName.toLowerCase();
+
+    const attrs = entry?.attributes ?? [];
+    for (const attr of attrs) {
+      const type = String(attr?.type || '').toLowerCase();
+
+      if (type === normalized || type === `${normalized};binary`) {
+        if (Array.isArray(attr?.buffers) && attr.buffers.length > 0) {
+          const first = attr.buffers[0];
+          if (Buffer.isBuffer(first)) {
+            return first;
+          }
+        }
+
+        if (Array.isArray(attr?._vals) && attr._vals.length > 0) {
+          const first = attr._vals[0];
+          if (Buffer.isBuffer(first)) {
+            return first;
+          }
+        }
+      }
+    }
+
+    const pojoAttrs = entry?.pojo?.attributes ?? [];
+    for (const attr of pojoAttrs) {
+      const type = String(attr?.type || '').toLowerCase();
+
+      if (type === normalized || type === `${normalized};binary`) {
+        const values = attr?.values ?? [];
+        if (values.length > 0) {
+          const first = values[0];
+
+          if (Buffer.isBuffer(first)) {
+            return first;
+          }
+
+          if (
+            first &&
+            typeof first === 'object' &&
+            first.type === 'Buffer' &&
+            Array.isArray(first.data)
+          ) {
+            return Buffer.from(first.data);
+          }
+        }
+      }
+    }
+
+    return undefined;
+  }
+
+  private getStringAttributeFromEntry(entry: any, attrName: string): string | undefined {
+    const normalized = attrName.toLowerCase();
+
+    const pojoAttrs = entry?.pojo?.attributes ?? [];
+    for (const attr of pojoAttrs) {
+      const type = String(attr?.type || '').toLowerCase();
+
+      if (type === normalized) {
+        const values = attr?.values ?? [];
+        if (!values.length) return undefined;
+
+        const first = values[0];
+
+        if (Buffer.isBuffer(first)) {
+          return first.toString('utf8');
+        }
+
+        if (
+          first &&
+          typeof first === 'object' &&
+          first.type === 'Buffer' &&
+          Array.isArray(first.data)
+        ) {
+          return Buffer.from(first.data).toString('utf8');
+        }
+
+        return String(first);
+      }
+    }
+
+    const obj = entry?.object ?? entry?.pojo?.object ?? {};
+    const value = obj[attrName];
+    return value != null ? String(value) : undefined;
+  }
+
   private findUserBySam(client: ldap.Client, sam: string): Promise<LdapUser> {
     const samEscaped = this.escapeFilter(sam);
 
@@ -97,6 +198,7 @@ export class AuthService {
       scope: 'sub',
       filter: `(&(objectClass=user)(sAMAccountName=${samEscaped}))`,
       attributes: [
+        'objectGUID;binary',
         'sAMAccountName',
         'displayName',
         'mail',
@@ -115,7 +217,6 @@ export class AuthService {
         if (err) return reject(err);
 
         res.on('searchEntry', (entry: any) => {
-          // DN
           const dn =
             entry?.dn?.toString?.() ||
             entry?.objectName ||
@@ -124,29 +225,24 @@ export class AuthService {
             entry?.pojo?.object?.distinguishedName ||
             null;
 
-          // Atributos (forma confiável)
-          const attrs = entry?.pojo?.attributes || [];
-          const getAttr = (name: string): string | undefined => {
-            const a = attrs.find(
-              (x: any) => String(x.type).toLowerCase() === name.toLowerCase(),
-            );
-            const v = a?.values?.[0];
-            return v != null ? String(v) : undefined;
-          };
+          const guidBuffer =
+            this.getBinaryAttributeFromEntry(entry, 'objectGUID') ??
+            this.getBinaryAttributeFromEntry(entry, 'objectGUID;binary');
 
-          // fallback: se vier em entry.object
-          const obj = entry.object ?? entry.pojo?.object ?? {};
+          const adObjectGuid = guidBuffer
+            ? this.bufferToGuid(guidBuffer)
+            : '';
 
           found = {
+            adObjectGuid,
             dn,
-            sAMAccountName: getAttr('sAMAccountName') ?? obj.sAMAccountName,
-            displayName: getAttr('displayName') ?? obj.displayName,
-            mail: getAttr('mail') ?? obj.mail,
-            userPrincipalName:
-              getAttr('userPrincipalName') ?? obj.userPrincipalName,
-            company: getAttr('company') ?? obj.company,
-            department: getAttr('department') ?? obj.department,
-            telephoneNumber: getAttr('telephoneNumber') ?? obj.telephoneNumber,
+            sAMAccountName: this.getStringAttributeFromEntry(entry, 'sAMAccountName'),
+            displayName: this.getStringAttributeFromEntry(entry, 'displayName'),
+            mail: this.getStringAttributeFromEntry(entry, 'mail'),
+            userPrincipalName: this.getStringAttributeFromEntry(entry, 'userPrincipalName'),
+            company: this.getStringAttributeFromEntry(entry, 'company'),
+            department: this.getStringAttributeFromEntry(entry, 'department'),
+            telephoneNumber: this.getStringAttributeFromEntry(entry, 'telephoneNumber'),
           };
         });
 
@@ -157,6 +253,15 @@ export class AuthService {
               new Error(`Usuário encontrado mas DN não veio. sam=${sam}`),
             );
           }
+
+          if (!found.adObjectGuid) {
+            return reject(
+              new Error(
+                `Usuário encontrado mas objectGUID não veio em formato binário. sam=${sam}`,
+              ),
+            );
+          }
+
           resolve(found);
         });
       });
@@ -177,7 +282,6 @@ export class AuthService {
 
       await this.bind(client, user.dn, password);
 
-      // volta para conta de serviço
       await this.bind(
         client,
         this.serviceBindIdentity,
@@ -203,10 +307,10 @@ export class AuthService {
     }
 
     const adUser = await this.validateUser(sam, password);
-
     const roles = this.mapGroupsToRoles(adUser.groups);
 
     const payload = {
+      adObjectGuid: adUser.adObjectGuid,
       sub: adUser.sAMAccountName,
       sam: adUser.sAMAccountName,
       name: adUser.displayName,
@@ -217,12 +321,10 @@ export class AuthService {
       roles,
     };
 
-    const accessToken = await this.jwt.signAsync(payload, {
+    return this.jwt.signAsync(payload, {
       secret: this.accessSecret,
       expiresIn: this.accessTtl,
     });
-
-    return accessToken;
   }
 
   private extractCn(dn: string): string {
@@ -254,7 +356,6 @@ export class AuthService {
       }
     }
 
-    // fallback mínimo
     if (roles.size === 0) {
       roles.add('USER');
     }
@@ -281,17 +382,21 @@ export class AuthService {
 
         res.on('searchEntry', (entry: any) => {
           const obj = entry.object ?? entry.pojo?.object ?? {};
-
           const mo = obj.memberOf;
 
-          if (mo) groups = Array.isArray(mo) ? mo : [mo];
+          if (mo) {
+            groups = Array.isArray(mo) ? mo : [mo];
+          }
 
           if ((!mo || groups.length === 0) && entry?.pojo?.attributes) {
             const attrs = entry.pojo.attributes || [];
-            const a = attrs.find(
+            const attr = attrs.find(
               (x: any) => String(x.type).toLowerCase() === 'memberof',
             );
-            if (a?.values?.length) groups = a.values.map((v: any) => String(v));
+
+            if (attr?.values?.length) {
+              groups = attr.values.map((v: any) => String(v));
+            }
           }
         });
 

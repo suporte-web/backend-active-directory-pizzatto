@@ -145,7 +145,7 @@ model PlantaoConfig {
   updatedAt      DateTime         @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
 
   plantonistaId  String?          @db.Uuid
-  plantonista    Plantonista?     @relation("Plantonista", fields: [plantonistaId], references: [id])
+  plantonista    PlantaoContato?  @relation("Plantonista", fields: [plantonistaId], references: [id])
 
   @@map("PlantaoConfig")
 }
@@ -165,7 +165,7 @@ model PlantaoContato {
   createdAt             DateTime          @default(now()) @map("createdAt") @db.Timestamp(6)
   updatedAt             DateTime          @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
 
-  plantoes              Plantonista[]     @relation("Plantonista")
+  plantoes              PlantaoConfig[]   @relation("Plantonista")
 
   @@map("PlantaoContato")
 }
@@ -316,4 +316,105 @@ model BibliotecaMarca {
     updatedAt       DateTime    @default(now()) @updatedAt @db.Timestamp(6)
 
     @@map("BibliotecaMarca")
+}
+
+// ----- 37-usuarioChat.model.prisma -----
+model UsuarioChat {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  adObjectGuid   String   @unique
+  usuario        String
+  nome           String
+  email          String?
+  empresa        String?
+  departamento   String?
+  telefone       String?
+  ativo          Boolean  @default(true)
+
+  createdAt       DateTime    @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime    @default(now()) @updatedAt @db.Timestamp(6)
+
+  conversasCriadas Conversa[]        @relation("CriadorConversa")
+  participacoes    ParticipanteConversa[]
+  mensagens        Mensagem[]
+
+  @@index([usuario])
+  @@index([email])
+  @@index([nome])
+}
+
+// ----- 38-conversa.model.prisma -----
+enum TipoConversa {
+  DIRETA
+  GRUPO
+}
+
+model Conversa {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tipo            TipoConversa
+  nome            String?
+  chaveDireta     String?           @unique
+  criadoPorId     String            @db.Uuid
+  ultimaMensagemEm DateTime?
+  
+  createdAt       DateTime    @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime    @default(now()) @updatedAt @db.Timestamp(6)
+
+  criadoPor   UsuarioChat           @relation("CriadorConversa", fields: [criadoPorId], references: [id])
+  participantes ParticipanteConversa[]
+  mensagens     Mensagem[]
+
+  @@index([tipo])
+  @@index([criadoPorId])
+  @@index([ultimaMensagemEm])
+}
+
+// ----- 39-participanteConversa.model.prisma -----
+model ParticipanteConversa {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversaId      String        @db.Uuid
+  usuarioId       String        @db.Uuid
+  entrouEm        DateTime      @default(now())
+  ultimaLeituraEm DateTime?
+  admin           Boolean       @default(false)
+
+  conversa Conversa             @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+  usuario UsuarioChat           @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime    @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime    @default(now()) @updatedAt @db.Timestamp(6)
+
+  @@unique([conversaId, usuarioId])
+  @@index([conversaId])
+  @@index([usuarioId])
+}
+
+// ----- 40-mensagem.model.prisma -----
+model Mensagem {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversaId   String   @db.Uuid
+  remetenteId  String   @db.Uuid
+  conteudo     String?
+  tipo         TipoMensagem @default(TEXTO)
+
+  arquivoUrl   String?
+  nomeArquivo  String?
+  nomeSalvo    String?
+  mimeType     String?
+  tamanhoBytes Int?
+
+  createdAt    DateTime @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime @default(now()) @updatedAt @db.Timestamp(6)
+  deletedAt    DateTime?
+
+  conversa     Conversa    @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+  remetente    UsuarioChat @relation(fields: [remetenteId], references: [id])
+
+  @@index([conversaId, createdAt])
+  @@index([remetenteId])
+}
+
+enum TipoMensagem {
+  TEXTO
+  IMAGEM
+  ARQUIVO
 }
