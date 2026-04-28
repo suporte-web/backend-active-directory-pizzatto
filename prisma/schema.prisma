@@ -127,6 +127,8 @@ model Pops {
     size                    String
     filePath                String
     folder                  String
+    departamento            String?
+    criadoPor               String?
    
     createdAt               DateTime        @default(now()) @map("createdAt") @db.Timestamp(6)
     updatedAt               DateTime        @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
@@ -136,16 +138,18 @@ model Pops {
 
 // ----- 27-plantaoConfig.model.prisma -----
 model PlantaoConfig {
-  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
-  janelaInicio   String
-  janelaFim      String
-  dataJanela     String
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("id")
+  janelaInicio    String
+  janelaFim       String
+  dataJanela      String?
+  diaSemana       Int?
+  status          String
 
-  createdAt      DateTime         @default(now()) @map("createdAt") @db.Timestamp(6)
-  updatedAt      DateTime         @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
+  createdAt       DateTime         @default(now()) @map("createdAt") @db.Timestamp(6)
+  updatedAt       DateTime         @default(now()) @updatedAt @map("updatedAt") @db.Timestamp(6)
 
-  plantonistaId  String?          @db.Uuid
-  plantonista    PlantaoContato?  @relation("Plantonista", fields: [plantonistaId], references: [id])
+  plantonistaId   String?          @db.Uuid
+  plantonista     PlantaoContato?  @relation("Plantonista", fields: [plantonistaId], references: [id])
 
   @@map("PlantaoConfig")
 }
