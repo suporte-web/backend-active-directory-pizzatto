@@ -265,6 +265,63 @@ export class UserAdService {
     await this.modify(client, dn, change);
   }
 
+  async enableUserAd(body: any): Promise<void> {
+    const client = this.createClient();
+
+    try {
+      await this.bind(client);
+
+      const sam = body.sAMAccountName || body.samaccountname || body.login;
+      if (!sam) throw new Error('sAMAccountName não informado');
+
+      const userDn = await this.findUserDnBySam(client, sam);
+
+      await this.enableAccount(client, userDn);
+    } catch (error) {
+      console.error('[enableUserAd] erro:', error);
+      throw new InternalServerErrorException('Erro ao ativar usuário no AD');
+    } finally {
+      this.safeUnbind(client);
+    }
+  }
+
+  private async disableAccount(client: ldap.Client, dn: string): Promise<void> {
+    const AttributeCtor = (ldap as any).Attribute;
+    const ChangeCtor = (ldap as any).Change;
+
+    const uacAttr = new AttributeCtor({
+      type: 'userAccountControl',
+      values: ['514'], // 512 + 2 = conta desabilitada
+    });
+
+    const change = new ChangeCtor({
+      operation: 'replace',
+      modification: uacAttr,
+    });
+
+    await this.modify(client, dn, change);
+  }
+
+  async disableUserAd(body: any): Promise<void> {
+    const client = this.createClient();
+
+    try {
+      await this.bind(client);
+
+      const sam = body.sAMAccountName || body.samaccountname || body.login;
+      if (!sam) throw new Error('sAMAccountName não informado');
+
+      const userDn = await this.findUserDnBySam(client, sam);
+
+      await this.disableAccount(client, userDn);
+    } catch (error) {
+      console.error('[disableUserAd] erro:', error);
+      throw new InternalServerErrorException('Erro ao inativar usuário no AD');
+    } finally {
+      this.safeUnbind(client);
+    }
+  }
+
   private async findUserDnBySam(
     client: ldap.Client,
     sam: string,

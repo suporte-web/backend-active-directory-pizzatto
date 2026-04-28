@@ -55,6 +55,16 @@ export class UserAdController {
     return await this.adUserService.resetPasswordAndForceChange(body);
   }
 
+  @Patch('enable')
+  async enableUserAd(@Body() body: any) {
+    return await this.adUserService.enableUserAd(body);
+  }
+
+  @Patch('disable')
+  async disableUserAd(@Body() body: any) {
+    return await this.adUserService.disableUserAd(body);
+  }
+
   @Get('get-all-setores-users-ad')
   @ApiOperation({
     summary: 'Encontra todos os setores dos colaboradores no AD',
