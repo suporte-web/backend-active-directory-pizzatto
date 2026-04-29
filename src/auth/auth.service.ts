@@ -342,6 +342,7 @@ export class AuthService {
       Sistema_Interno_Pizzatto_Lideranca: 'LIDERANCA',
       Sistema_Interno_Pizzatto_Pessoas_e_Cultura: 'PESSOAS_E_CULTURA',
       Sistema_Interno_Pizzatto_TI: 'TI',
+      Sistema_Interno_Pizzatto_Desenvolvimento: 'DESENVOLVIMENTO',
     };
 
     for (const dn of groupsDn) {
